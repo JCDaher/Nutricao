@@ -15,8 +15,16 @@ from app.services.nutrition_calc import NutritionCalculator
 from app.services.meal_builder import MealBuilder
 from app.services.diet_generator import DietGenerator, generate_diet_offline
 
-# Configurar caminhos
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Detectar ambiente Vercel
+IS_VERCEL = os.environ.get('VERCEL', False)
+
+# Configurar caminhos - funciona tanto local quanto no Vercel
+if IS_VERCEL:
+    # No Vercel, os arquivos estão em /var/task
+    BASE_DIR = Path('/var/task')
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
 
@@ -27,8 +35,11 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Montar arquivos estáticos e templates
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# Montar arquivos estáticos apenas em ambiente local
+# No Vercel, os arquivos estáticos são servidos separadamente
+if not IS_VERCEL and STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Inicializar serviços
