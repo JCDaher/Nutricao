@@ -1,25 +1,25 @@
 """
 FastAPI Application - Gerador de Dietas para Diabetes
-Sistema otimizado para mínimo uso de tokens da API Anthropic
+Sistema híbrido otimizado: Python + API Anthropic inteligente
 """
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from datetime import datetime
+from typing import Optional
 import os
 from pathlib import Path
 
-from app.models import PatientData, NutritionData, DietPlan
+from app.models import PatientData
 from app.services.nutrition_calc import NutritionCalculator
-from app.services.meal_builder import MealBuilder
-from app.services.diet_generator import DietGenerator, generate_diet_offline
+from app.services.hybrid_system import HybridDietSystem
+from app.config.settings import settings, GenerationMode
 
 # Detectar ambiente Vercel
 IS_VERCEL = os.environ.get('VERCEL', False)
 
 # Configurar caminhos - funciona tanto local quanto no Vercel
-# No Vercel, __file__ resolve corretamente para o diretório do código
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
@@ -27,8 +27,8 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 # Criar aplicação FastAPI
 app = FastAPI(
     title="Gerador de Dietas para Diabetes",
-    description="Sistema de geração de planos alimentares personalizados para diabetes",
-    version="1.0.0"
+    description="Sistema híbrido de geração de planos alimentares personalizados para diabetes",
+    version="2.0.0"
 )
 
 # Montar arquivos estáticos apenas em ambiente local
@@ -40,7 +40,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Inicializar serviços
 calc = NutritionCalculator()
-# MealBuilder será criado por requisição com o tipo_dieta específico
+hybrid_system = HybridDietSystem()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -50,135 +50,59 @@ async def home(request: Request):
 
 
 @app.post("/gerar-dieta")
-async def gerar_dieta(patient: PatientData):
+async def gerar_dieta(
+    patient: PatientData,
+    mode: Optional[str] = Query(None, description="Modo: python_only, auto, api_minimal, api_full")
+):
     """
-    Endpoint principal: recebe dados do paciente,
-    calcula tudo localmente e retorna Markdown
+    Endpoint principal: gera dieta usando sistema híbrido inteligente
 
-    Fluxo:
-    1. Calcular TMB, necessidade calórica, macros (Python - 0 tokens)
-    2. Montar refeições com alimentos da base de dados (Python - 0 tokens)
-    3. Formatar com Claude (mínimo de tokens ~4.000)
+    Modos disponíveis:
+    - python_only: 100% Python, custo $0
+    - auto: Decisão inteligente baseada na complexidade (recomendado)
+    - api_minimal: Python + API apenas para apresentação
+    - api_full: API completa para casos complexos
 
     Args:
         patient: Dados do paciente do formulário
+        mode: Modo de geração (opcional, padrão: auto)
 
     Returns:
-        JSON com markdown formatado e metadados
+        JSON com markdown formatado e metadados completos
     """
 
     try:
-        # ==================== 1. CÁLCULOS NUTRICIONAIS (Python - 0 tokens) ====================
-
-        # Calcular Taxa Metabólica Basal
-        tmb = calc.calcular_tmb(
-            peso=patient.peso,
-            altura=patient.altura,
-            idade=patient.idade,
-            sexo=patient.sexo
-        )
-
-        # Calcular necessidade calórica (atividade leve para diabéticos)
-        necessidade = calc.necessidade_calorica(tmb, nivel_atividade='leve')
-
-        # Calcular IMC
-        imc = calc.calcular_imc(patient.peso, patient.altura)
-
-        # Calcular meta calórica usando o nível de déficit escolhido pelo usuário
-        meta = calc.calcular_meta_por_nivel(necessidade, patient.nivel_deficit, patient.sexo)
-
-        # Distribuir macros usando o tipo de dieta escolhido pelo usuário
-        macros = calc.distribuir_macros(meta, tipo_dieta=patient.tipo_dieta)
-
-        # Distribuir por refeições (5 refeições com ceia)
-        distribuicao = calc.distribuir_por_refeicoes(meta, num_refeicoes=5)
-
-        # Calcular risco cardiovascular se cintura foi informada
-        risco_cardiovascular = None
-        relacao_cintura_altura = None
-        if patient.cintura:
-            risco_cv = calc.classificar_risco_cardiovascular(
-                patient.cintura, patient.altura, patient.sexo
-            )
-            risco_cardiovascular = risco_cv['risco_cardiovascular']
-            relacao_cintura_altura = risco_cv['relacao_cintura_altura']
-
-        # Criar objeto NutritionData
-        nutrition_data = NutritionData(
-            tmb=tmb,
-            necessidade_calorica=necessidade,
-            meta_calorica=meta,
-            imc=imc,
-            macros=macros,
-            distribuicao_refeicoes=distribuicao,
-            risco_cardiovascular=risco_cardiovascular,
-            relacao_cintura_altura=relacao_cintura_altura
-        )
-
-        # ==================== 2. MONTAGEM DE REFEIÇÕES (Python - 0 tokens) ====================
-
-        # Criar MealBuilder com o tipo de dieta específico do paciente
-        builder = MealBuilder(tipo_dieta=patient.tipo_dieta)
-        refeicoes = builder.build_complete_plan(distribuicao, macros)
-
-        # ==================== 3. CRIAR PLANO COMPLETO ====================
-
-        diet_plan = DietPlan(
-            paciente=patient,
-            calculos=nutrition_data,
-            refeicoes=refeicoes
-        )
-
-        # ==================== 4. FORMATAR COM CLAUDE (mínimo de tokens) ====================
-
-        # Verificar se a API key está configurada
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-
-        if api_key:
+        # Converter string de mode para enum se fornecido
+        generation_mode = None
+        if mode:
             try:
-                generator = DietGenerator()
-                markdown_output = generator.generate(diet_plan)
-            except Exception as api_error:
-                # Fallback para modo offline se API falhar
-                print(f"Erro na API Claude: {api_error}. Usando modo offline.")
-                markdown_output = generate_diet_offline(diet_plan)
-        else:
-            # Modo offline quando não há API key
-            markdown_output = generate_diet_offline(diet_plan)
+                generation_mode = GenerationMode(mode)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Modo inválido: {mode}. Use: python_only, auto, api_minimal, api_full"
+                )
 
-        # ==================== 5. RETORNAR RESULTADO ====================
+        # Gerar dieta usando sistema híbrido
+        markdown, metadata = hybrid_system.generate_diet(
+            patient_data=patient,
+            mode=generation_mode
+        )
 
         # Gerar nome do arquivo
         nome_limpo = patient.nome.replace(" ", "_").replace(".", "")
         data_atual = datetime.now().strftime('%Y-%m-%d')
         filename = f"Dieta_{nome_limpo}_{data_atual}.md"
 
-        # Calcular resumo nutricional real
-        resumo = builder.get_resumo_nutricional(refeicoes)
-
         return JSONResponse({
             "success": True,
-            "markdown": markdown_output,
+            "markdown": markdown,
             "filename": filename,
-            "metadata": {
-                "tmb": round(tmb, 0),
-                "necessidade_calorica": round(necessidade, 0),
-                "meta_calorica": round(meta, 0),
-                "imc": round(imc, 1),
-                "classificacao_imc": calc.classificar_imc(imc),
-                "tipo_dieta": patient.tipo_dieta,
-                "nivel_deficit": patient.nivel_deficit,
-                "risco_cardiovascular": risco_cardiovascular,
-                "relacao_cintura_altura": relacao_cintura_altura,
-                "calorias_reais": round(resumo['calorias'], 0),
-                "macros": {
-                    "carboidratos_g": round(resumo['carboidratos_g'], 0),
-                    "proteinas_g": round(resumo['proteinas_g'], 0),
-                    "gorduras_g": round(resumo['gorduras_g'], 0)
-                }
-            }
+            "metadata": metadata
         })
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -190,14 +114,14 @@ async def health():
 
     Verifica:
     - Status da aplicação
-    - Presença da chave da API Anthropic
+    - Disponibilidade da API Anthropic
+    - Versão do sistema
     """
-    api_configured = bool(os.getenv("ANTHROPIC_API_KEY"))
-
     return {
         "status": "ok",
-        "anthropic_api_configured": api_configured,
-        "version": "1.0.0",
+        "api_available": hybrid_system.api_available,
+        "default_mode": settings.default_generation_mode,
+        "version": "2.0.0",
         "timestamp": datetime.now().isoformat()
     }
 
@@ -253,6 +177,91 @@ async def calcular_preview(
             result["risco_cardiovascular"] = risco_cv
 
         return result
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/stats")
+async def get_stats(
+    month: Optional[int] = Query(None, ge=1, le=12, description="Mês (1-12)"),
+    year: Optional[int] = Query(None, ge=2024, le=2030, description="Ano")
+):
+    """
+    Estatísticas de uso do sistema
+
+    Args:
+        month: Mês para filtrar (opcional)
+        year: Ano para filtrar (opcional)
+
+    Returns:
+        JSON com estatísticas de geração de dietas
+    """
+    if month and year:
+        stats = hybrid_system.get_stats(month=month, year=year)
+        period = f"{year}-{month:02d}"
+    else:
+        stats = hybrid_system.get_stats()
+        period = "all_time"
+
+    return {
+        "period": period,
+        "stats": stats
+    }
+
+
+@app.get("/config")
+async def get_config():
+    """
+    Configuração atual do sistema
+
+    Returns:
+        JSON com configurações do sistema híbrido
+    """
+    return {
+        "default_mode": settings.default_generation_mode,
+        "complexity_thresholds": {
+            "simple": settings.complexity_threshold_simple,
+            "medium": settings.complexity_threshold_medium
+        },
+        "costs": {
+            "python_only": settings.cost_python_only,
+            "api_minimal": settings.cost_api_minimal,
+            "api_full": settings.cost_api_full
+        },
+        "api_available": hybrid_system.api_available,
+        "api_model": settings.anthropic_model
+    }
+
+
+@app.post("/api/analyze-complexity")
+async def analyze_complexity(patient: PatientData):
+    """
+    Analisa a complexidade do caso sem gerar dieta
+
+    Útil para entender qual modo será usado em modo AUTO
+
+    Args:
+        patient: Dados do paciente
+
+    Returns:
+        JSON com análise de complexidade
+    """
+    try:
+        analysis = hybrid_system.analyze_complexity(patient)
+
+        return {
+            "score": analysis['score'],
+            "factors": [f.description for f in analysis['factors']],
+            "recommendation": analysis['recommendation'],
+            "rationale": analysis['rationale'],
+            "patient_summary": analysis['patient_summary'],
+            "estimated_cost": {
+                "python_only": settings.cost_python_only,
+                "api_minimal": settings.cost_api_minimal,
+                "api_full": settings.cost_api_full
+            }[analysis['recommendation']]
+        }
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
