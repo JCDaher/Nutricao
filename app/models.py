@@ -14,6 +14,10 @@ class PatientData(BaseModel):
     altura: float = Field(..., ge=140, le=220, description="Altura em cm")
     hba1c: Optional[float] = Field(None, ge=4, le=15, description="HbA1c em %")
     glicemia: Optional[float] = Field(None, ge=70, le=400, description="Glicemia em mg/dL")
+    # Novos campos
+    cintura: Optional[float] = Field(None, ge=50, le=200, description="Circunferência abdominal em cm")
+    tipo_dieta: str = Field("personalizado", description="Tipo de dieta: personalizado, low_carb, low_carb_moderado")
+    nivel_deficit: str = Field("moderado", description="Nível de déficit: leve, moderado, intenso, muito_intenso")
 
 
 class NutritionData(BaseModel):
@@ -24,6 +28,9 @@ class NutritionData(BaseModel):
     imc: float = Field(..., description="Índice de Massa Corporal")
     macros: Dict[str, float] = Field(..., description="Distribuição de macronutrientes")
     distribuicao_refeicoes: Dict[str, Dict] = Field(..., description="Distribuição de calorias por refeição")
+    # Novos campos para risco cardiovascular
+    risco_cardiovascular: Optional[str] = Field(None, description="Classificação do risco cardiovascular")
+    relacao_cintura_altura: Optional[float] = Field(None, description="Relação cintura/altura")
 
 
 class FoodItem(BaseModel):
