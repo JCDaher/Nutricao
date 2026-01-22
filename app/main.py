@@ -19,12 +19,8 @@ from app.services.diet_generator import DietGenerator, generate_diet_offline
 IS_VERCEL = os.environ.get('VERCEL', False)
 
 # Configurar caminhos - funciona tanto local quanto no Vercel
-if IS_VERCEL:
-    # No Vercel, os arquivos estão em /var/task
-    BASE_DIR = Path('/var/task')
-else:
-    BASE_DIR = Path(__file__).resolve().parent.parent
-
+# No Vercel, __file__ resolve corretamente para o diretório do código
+BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
 
@@ -36,10 +32,10 @@ app = FastAPI(
 )
 
 # Montar arquivos estáticos apenas em ambiente local
-# No Vercel, os arquivos estáticos são servidos separadamente
 if not IS_VERCEL and STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+# Inicializar templates
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Inicializar serviços
