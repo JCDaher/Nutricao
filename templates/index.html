@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Dietas para Diabetes | Dr. Jorge Cecílio Daher Jr</title>
+    <meta name="description" content="Sistema de geração de planos alimentares personalizados para diabetes. Desenvolvido para o consultório do Dr. Jorge Cecílio Daher Jr.">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                        <path d="M2 17l10 5 10-5"></path>
+                        <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>Gerador de Dietas</h1>
+                    <p>Dr. Jorge Cecílio Daher Jr - CRMGO 6108</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Dados do Paciente</h2>
+                    <p>Preencha as informações abaixo para gerar um plano alimentar personalizado</p>
+                </div>
+
+                <form id="dietForm" class="form">
+                    <!-- Nome -->
+                    <div class="form-group">
+                        <label for="nome">Nome Completo *</label>
+                        <input
+                            type="text"
+                            id="nome"
+                            name="nome"
+                            required
+                            minlength="3"
+                            placeholder="Digite o nome completo do paciente"
+                        >
+                    </div>
+
+                    <!-- Sexo -->
+                    <div class="form-group">
+                        <label>Sexo *</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="sexo" value="M" required>
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">Masculino</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="sexo" value="F" required>
+                                <span class="radio-custom"></span>
+                                <span class="radio-text">Feminino</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Idade, Peso, Altura -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="idade">Idade *</label>
+                            <div class="input-with-unit">
+                                <input
+                                    type="number"
+                                    id="idade"
+                                    name="idade"
+                                    required
+                                    min="18"
+                                    max="100"
+                                    placeholder="Ex: 45"
+                                >
+                                <span class="unit">anos</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="peso">Peso *</label>
+                            <div class="input-with-unit">
+                                <input
+                                    type="number"
+                                    id="peso"
+                                    name="peso"
+                                    required
+                                    min="40"
+                                    max="300"
+                                    step="0.1"
+                                    placeholder="Ex: 75.5"
+                                >
+                                <span class="unit">kg</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="altura">Altura *</label>
+                            <div class="input-with-unit">
+                                <input
+                                    type="number"
+                                    id="altura"
+                                    name="altura"
+                                    required
+                                    min="140"
+                                    max="220"
+                                    placeholder="Ex: 170"
+                                >
+                                <span class="unit">cm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- HbA1c ou Glicemia -->
+                    <div class="form-group">
+                        <label>Controle Glicêmico (opcional)</label>
+                        <p class="form-hint">Informe HbA1c OU Glicemia de jejum</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="hba1c" class="label-small">HbA1c</label>
+                                <div class="input-with-unit">
+                                    <input
+                                        type="number"
+                                        id="hba1c"
+                                        name="hba1c"
+                                        min="4"
+                                        max="15"
+                                        step="0.1"
+                                        placeholder="Ex: 7.2"
+                                    >
+                                    <span class="unit">%</span>
+                                </div>
+                            </div>
+
+                            <div class="or-divider">ou</div>
+
+                            <div class="form-group">
+                                <label for="glicemia" class="label-small">Glicemia de Jejum</label>
+                                <div class="input-with-unit">
+                                    <input
+                                        type="number"
+                                        id="glicemia"
+                                        name="glicemia"
+                                        min="70"
+                                        max="400"
+                                        step="1"
+                                        placeholder="Ex: 126"
+                                    >
+                                    <span class="unit">mg/dL</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview dos Cálculos -->
+                    <div id="preview" class="preview hidden">
+                        <h3>Estimativa Rápida</h3>
+                        <div class="preview-grid">
+                            <div class="preview-item">
+                                <span class="preview-label">IMC</span>
+                                <span id="preview-imc" class="preview-value">-</span>
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-label">Classificação</span>
+                                <span id="preview-classificacao" class="preview-value">-</span>
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-label">Meta Calórica</span>
+                                <span id="preview-meta" class="preview-value">-</span>
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-label">Água/dia</span>
+                                <span id="preview-agua" class="preview-value">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitBtn" class="btn btn-primary">
+                        <span class="btn-text">Gerar Dieta Personalizada</span>
+                        <span class="btn-loading hidden">
+                            <svg class="spinner" viewBox="0 0 24 24">
+                                <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke-width="3"></circle>
+                            </svg>
+                            Gerando dieta...
+                        </span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Info Cards -->
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        </svg>
+                    </div>
+                    <h3>Seguro e Personalizado</h3>
+                    <p>Plano alimentar baseado em suas necessidades individuais e condição de saúde.</p>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <h3>Alimentos Brasileiros</h3>
+                    <p>Baseado na Tabela TACO com alimentos típicos da culinária brasileira.</p>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Download Imediato</h3>
+                    <p>Receba o plano em formato Markdown para imprimir ou importar no Google Docs.</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Dr. Jorge Cecílio Daher Jr | CRMGO 6108 | RQE 5769, 5772</p>
+            <p>Endocrinologia e Metabologia</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
