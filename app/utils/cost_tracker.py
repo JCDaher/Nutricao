@@ -1,6 +1,7 @@
 """
 Tracking de custos e estatísticas de uso
-Armazena dados em JSON local
+Armazena dados em JSON local (quando possível)
+No Vercel, usa memória apenas (stats são perdidos entre requests)
 """
 from datetime import datetime
 from typing import Dict
@@ -9,6 +10,9 @@ import json
 import os
 
 from app.config.settings import settings
+
+# Detectar ambiente Vercel (read-only filesystem)
+IS_VERCEL = os.environ.get('VERCEL', False)
 
 
 class DietGeneration(BaseModel):
@@ -24,10 +28,13 @@ class DietGeneration(BaseModel):
 class CostTracker:
     """
     Rastreia custos e estatísticas
+    No Vercel: apenas memória (não persiste entre requests)
+    Local: salva em arquivo JSON
     """
 
     def __init__(self, storage_path: str = "data/usage_stats.json"):
         self.storage_path = storage_path
+        self.is_readonly = IS_VERCEL
         self.stats = self._load_stats()
 
     def record_generation(
@@ -119,7 +126,11 @@ class CostTracker:
         }
 
     def _load_stats(self) -> Dict:
-        """Carrega estatísticas do arquivo"""
+        """Carrega estatísticas do arquivo (se disponível)"""
+
+        # Em ambiente Vercel, sempre começar vazio
+        if self.is_readonly:
+            return self._empty_stats()
 
         if os.path.exists(self.storage_path):
             try:
@@ -141,9 +152,16 @@ class CostTracker:
         }
 
     def _save_stats(self):
-        """Salva estatísticas no arquivo"""
+        """Salva estatísticas no arquivo (apenas em ambiente local)"""
 
-        os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+        # Não salvar em ambiente Vercel (read-only filesystem)
+        if self.is_readonly:
+            return
 
-        with open(self.storage_path, 'w') as f:
-            json.dump(self.stats, f, indent=2, default=str)
+        try:
+            os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
+            with open(self.storage_path, 'w') as f:
+                json.dump(self.stats, f, indent=2, default=str)
+        except (OSError, IOError) as e:
+            # Ignorar erros de escrita silenciosamente
+            print(f"Aviso: Não foi possível salvar estatísticas: {e}")
