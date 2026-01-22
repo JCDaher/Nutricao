@@ -15,7 +15,8 @@
             --white: #ffffff; --gray-50: #f9fafb; --gray-100: #f3f4f6;
             --gray-200: #e5e7eb; --gray-300: #d1d5db; --gray-400: #9ca3af;
             --gray-500: #6b7280; --gray-600: #4b5563; --gray-700: #374151;
-            --gray-800: #1f2937; --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --gray-800: #1f2937; --danger: #dc3545; --warning: #f59e0b;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         html { font-size: 16px; }
         body { font-family: var(--font-family); font-size: 1rem; line-height: 1.6; color: var(--gray-700); background-color: var(--gray-50); -webkit-font-smoothing: antialiased; }
@@ -31,22 +32,25 @@
         .card-header h2 { font-size: 1.25rem; font-weight: 600; color: var(--gray-800); margin-bottom: 0.25rem; }
         .card-header p { font-size: 0.875rem; color: var(--gray-500); }
         .form { display: flex; flex-direction: column; gap: 1.5rem; }
+        .form-section { border-top: 1px solid var(--gray-200); padding-top: 1.5rem; margin-top: 0.5rem; }
+        .form-section-title { font-size: 0.875rem; font-weight: 600; color: var(--gray-600); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
         .form-group { display: flex; flex-direction: column; gap: 0.25rem; }
         .form-group label { font-size: 0.875rem; font-weight: 500; color: var(--gray-700); }
         .label-small { font-size: 0.75rem !important; color: var(--gray-500) !important; }
         .form-hint { font-size: 0.75rem; color: var(--gray-400); margin-top: -0.25rem; margin-bottom: 0.25rem; }
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; align-items: end; }
         .or-divider { display: flex; align-items: center; justify-content: center; color: var(--gray-400); font-size: 0.875rem; padding-bottom: 0.5rem; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 0.5rem 1rem; font-size: 1rem; font-family: var(--font-family); color: var(--gray-800); background: var(--white); border: 1px solid var(--gray-300); border-radius: 0.5rem; transition: border-color 150ms ease, box-shadow 150ms ease; }
-        input[type="text"]:focus, input[type="number"]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 0.5rem 1rem; font-size: 1rem; font-family: var(--font-family); color: var(--gray-800); background: var(--white); border: 1px solid var(--gray-300); border-radius: 0.5rem; transition: border-color 150ms ease, box-shadow 150ms ease; }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
         input::placeholder { color: var(--gray-400); }
+        select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 1rem center; padding-right: 2.5rem; }
         .input-with-unit { position: relative; display: flex; align-items: center; }
         .input-with-unit input { padding-right: 3rem; }
         .input-with-unit .unit { position: absolute; right: 1rem; color: var(--gray-400); font-size: 0.875rem; pointer-events: none; }
-        .radio-group { display: flex; gap: 1.5rem; }
+        .radio-group { display: flex; gap: 1.5rem; flex-wrap: wrap; }
         .radio-label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
         .radio-label input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
-        .radio-custom { width: 20px; height: 20px; border: 2px solid var(--gray-300); border-radius: 50%; transition: border-color 150ms ease; position: relative; }
+        .radio-custom { width: 20px; height: 20px; border: 2px solid var(--gray-300); border-radius: 50%; transition: border-color 150ms ease; position: relative; flex-shrink: 0; }
         .radio-custom::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); width: 10px; height: 10px; background: var(--primary); border-radius: 50%; transition: transform 150ms ease; }
         .radio-label input[type="radio"]:checked + .radio-custom { border-color: var(--primary); }
         .radio-label input[type="radio"]:checked + .radio-custom::after { transform: translate(-50%, -50%) scale(1); }
@@ -57,10 +61,15 @@
         .preview-item { display: flex; flex-direction: column; align-items: center; text-align: center; }
         .preview-label { font-size: 0.75rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; }
         .preview-value { font-size: 1.125rem; font-weight: 600; color: var(--primary-dark); }
+        .risk-warning { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 0.5rem; padding: 0.75rem; margin-top: 1rem; }
+        .risk-warning p { font-size: 0.75rem; color: #92400e; margin: 0; }
         .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 2rem; font-size: 1rem; font-weight: 600; font-family: var(--font-family); border: none; border-radius: 0.5rem; cursor: pointer; transition: all 150ms ease; }
-        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: var(--white); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: var(--white); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); flex: 1; }
         .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-secondary { background: var(--white); color: var(--gray-700); border: 1px solid var(--gray-300); }
+        .btn-secondary:hover { background: var(--gray-50); border-color: var(--gray-400); }
+        .btn-group { display: flex; gap: 1rem; }
         .spinner { width: 20px; height: 20px; animation: rotate 1s linear infinite; }
         .spinner-circle { stroke: currentColor; stroke-linecap: round; animation: dash 1.5s ease-in-out infinite; }
         @keyframes rotate { 100% { transform: rotate(360deg); } }
@@ -74,7 +83,7 @@
         .footer { text-align: center; padding: 2rem 0; margin-top: auto; }
         .footer p { font-size: 0.75rem; color: var(--gray-400); margin-bottom: 0.25rem; }
         .hidden { display: none !important; }
-        @media (max-width: 640px) { .container { padding: 0.5rem; } .card { padding: 1.5rem; } .logo { flex-direction: column; text-align: center; } .form-row { grid-template-columns: 1fr; } .radio-group { flex-direction: column; gap: 0.5rem; } }
+        @media (max-width: 640px) { .container { padding: 0.5rem; } .card { padding: 1.5rem; } .logo { flex-direction: column; text-align: center; } .form-row { grid-template-columns: 1fr; } .radio-group { flex-direction: column; gap: 0.5rem; } .btn-group { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -149,6 +158,15 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="cintura">Circunferência Abdominal (opcional)</label>
+                        <p class="form-hint">Para cálculo do risco cardiovascular</p>
+                        <div class="input-with-unit">
+                            <input type="number" id="cintura" name="cintura" min="50" max="200" step="0.1" placeholder="Ex: 92">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label>Controle Glicêmico (opcional)</label>
                         <p class="form-hint">Informe HbA1c OU Glicemia de jejum</p>
                         <div class="form-row">
@@ -166,6 +184,31 @@
                                     <input type="number" id="glicemia" name="glicemia" min="70" max="400" step="1" placeholder="Ex: 126">
                                     <span class="unit">mg/dL</span>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">Configurações da Dieta</div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tipo_dieta">Tipo de Dieta</label>
+                                <select id="tipo_dieta" name="tipo_dieta">
+                                    <option value="personalizado">Padrão (50% carb, 20% prot, 30% gord)</option>
+                                    <option value="low_carb_moderado">Low Carb Moderado (35% carb, 25% prot, 40% gord)</option>
+                                    <option value="low_carb">Low Carb (25% carb, 30% prot, 45% gord)</option>
+                                    <option value="mediterraneo">Mediterrâneo (45% carb, 25% prot, 30% gord)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="nivel_deficit">Nível de Déficit Calórico</label>
+                                <select id="nivel_deficit" name="nivel_deficit">
+                                    <option value="leve">Leve (~10% - perda gradual)</option>
+                                    <option value="moderado" selected>Moderado (~20% - recomendado)</option>
+                                    <option value="intenso">Intenso (~30% - perda acelerada)</option>
+                                    <option value="muito_intenso">Muito Intenso (~40% - supervisionado)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -190,17 +233,23 @@
                                 <span id="preview-agua" class="preview-value">-</span>
                             </div>
                         </div>
+                        <div id="risco-cv" class="risk-warning hidden">
+                            <p><strong>Risco Cardiovascular:</strong> <span id="preview-risco">-</span></p>
+                        </div>
                     </div>
 
-                    <button type="submit" id="submitBtn" class="btn btn-primary">
-                        <span class="btn-text">Gerar Dieta Personalizada</span>
-                        <span class="btn-loading hidden">
-                            <svg class="spinner" viewBox="0 0 24 24">
-                                <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke-width="3"></circle>
-                            </svg>
-                            Gerando dieta...
-                        </span>
-                    </button>
+                    <div class="btn-group">
+                        <button type="button" id="clearBtn" class="btn btn-secondary">Limpar Formulário</button>
+                        <button type="submit" id="submitBtn" class="btn btn-primary">
+                            <span class="btn-text">Gerar Dieta Personalizada</span>
+                            <span class="btn-loading hidden">
+                                <svg class="spinner" viewBox="0 0 24 24">
+                                    <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke-width="3"></circle>
+                                </svg>
+                                Gerando dieta...
+                            </span>
+                        </button>
+                    </div>
                 </form>
             </div>
 
@@ -238,17 +287,23 @@
     <script>
         const form = document.getElementById('dietForm');
         const submitBtn = document.getElementById('submitBtn');
+        const clearBtn = document.getElementById('clearBtn');
         const btnText = submitBtn.querySelector('.btn-text');
         const btnLoading = submitBtn.querySelector('.btn-loading');
         const preview = document.getElementById('preview');
         const idadeInput = document.getElementById('idade');
         const pesoInput = document.getElementById('peso');
         const alturaInput = document.getElementById('altura');
+        const cinturaInput = document.getElementById('cintura');
         const sexoInputs = document.querySelectorAll('input[name="sexo"]');
+        const tipoDietaSelect = document.getElementById('tipo_dieta');
+        const nivelDeficitSelect = document.getElementById('nivel_deficit');
         const previewImc = document.getElementById('preview-imc');
         const previewClassificacao = document.getElementById('preview-classificacao');
         const previewMeta = document.getElementById('preview-meta');
         const previewAgua = document.getElementById('preview-agua');
+        const riscoCvDiv = document.getElementById('risco-cv');
+        const previewRisco = document.getElementById('preview-risco');
 
         function debounce(func, wait) {
             let timeout;
@@ -263,19 +318,35 @@
             const altura = parseFloat(alturaInput.value);
             const idade = parseInt(idadeInput.value);
             const sexo = document.querySelector('input[name="sexo"]:checked')?.value;
+            const cintura = cinturaInput.value ? parseFloat(cinturaInput.value) : null;
+            const nivelDeficit = nivelDeficitSelect.value;
+
             if (!peso || !altura || !idade || !sexo || peso < 40 || peso > 300 || altura < 140 || altura > 220 || idade < 18 || idade > 100) {
                 preview.classList.add('hidden');
                 return;
             }
+
             try {
-                const response = await fetch(`/api/calcular-preview?peso=${peso}&altura=${altura}&idade=${idade}&sexo=${sexo}`);
+                let url = `/api/calcular-preview?peso=${peso}&altura=${altura}&idade=${idade}&sexo=${sexo}&nivel_deficit=${nivelDeficit}`;
+                if (cintura) url += `&cintura=${cintura}`;
+
+                const response = await fetch(url);
                 if (!response.ok) throw new Error('Erro');
                 const data = await response.json();
+
                 previewImc.textContent = `${data.imc} kg/m²`;
                 previewClassificacao.textContent = data.classificacao_imc;
                 previewMeta.textContent = `${data.meta_calorica} kcal`;
                 previewAgua.textContent = `${data.agua_litros} L`;
                 previewImc.style.color = data.imc < 18.5 ? '#ffc107' : data.imc < 25 ? '#28a745' : data.imc < 30 ? '#fd7e14' : '#dc3545';
+
+                if (data.risco_cardiovascular) {
+                    previewRisco.textContent = `${data.risco_cardiovascular} (Cintura/Altura: ${data.relacao_cintura_altura})`;
+                    riscoCvDiv.classList.remove('hidden');
+                } else {
+                    riscoCvDiv.classList.add('hidden');
+                }
+
                 preview.classList.remove('hidden');
             } catch (error) {
                 preview.classList.add('hidden');
@@ -283,8 +354,9 @@
         }
 
         const debouncedUpdatePreview = debounce(updatePreview, 500);
-        [idadeInput, pesoInput, alturaInput].forEach(input => input.addEventListener('input', debouncedUpdatePreview));
+        [idadeInput, pesoInput, alturaInput, cinturaInput].forEach(input => input.addEventListener('input', debouncedUpdatePreview));
         sexoInputs.forEach(input => input.addEventListener('change', debouncedUpdatePreview));
+        nivelDeficitSelect.addEventListener('change', debouncedUpdatePreview);
 
         function setLoadingState(isLoading) {
             submitBtn.disabled = isLoading;
@@ -312,6 +384,15 @@
             URL.revokeObjectURL(url);
         }
 
+        function clearForm() {
+            form.reset();
+            preview.classList.add('hidden');
+            riscoCvDiv.classList.add('hidden');
+            document.getElementById('nome').focus();
+        }
+
+        clearBtn.addEventListener('click', clearForm);
+
         async function handleSubmit(event) {
             event.preventDefault();
             const formData = {
@@ -321,7 +402,10 @@
                 peso: parseFloat(document.getElementById('peso').value) || 0,
                 altura: parseFloat(document.getElementById('altura').value) || 0,
                 hba1c: document.getElementById('hba1c').value ? parseFloat(document.getElementById('hba1c').value) : null,
-                glicemia: document.getElementById('glicemia').value ? parseFloat(document.getElementById('glicemia').value) : null
+                glicemia: document.getElementById('glicemia').value ? parseFloat(document.getElementById('glicemia').value) : null,
+                cintura: document.getElementById('cintura').value ? parseFloat(document.getElementById('cintura').value) : null,
+                tipo_dieta: document.getElementById('tipo_dieta').value,
+                nivel_deficit: document.getElementById('nivel_deficit').value
             };
 
             if (!formData.nome || formData.nome.length < 3) { showAlert('Nome deve ter pelo menos 3 caracteres'); return; }
@@ -344,7 +428,7 @@
                 const data = await response.json();
                 if (data.success) {
                     downloadMarkdown(data.markdown, data.filename);
-                    showAlert(`<strong>Dieta gerada com sucesso!</strong><br><small>IMC: ${data.metadata.imc} (${data.metadata.classificacao_imc})<br>Meta: ${data.metadata.meta_calorica} kcal/dia</small>`, false);
+                    showAlert(`<strong>Dieta gerada com sucesso!</strong><br><small>IMC: ${data.metadata.imc} (${data.metadata.classificacao_imc})<br>Meta: ${data.metadata.meta_calorica} kcal/dia<br>Tipo: ${formData.tipo_dieta}</small>`, false);
                 }
             } catch (error) {
                 showAlert(`Erro ao gerar dieta: ${error.message}`);
@@ -354,7 +438,7 @@
         }
 
         form.addEventListener('submit', handleSubmit);
-        document.addEventListener('DOMContentLoaded', () => { document.getElementById('nome').focus(); updatePreview(); });
+        document.addEventListener('DOMContentLoaded', () => { document.getElementById('nome').focus(); });
     </script>
 </body>
 </html>

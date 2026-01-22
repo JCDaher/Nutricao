@@ -19,14 +19,27 @@ class NutritionCalculator:
         'muito_intenso': 1.9
     }
 
-    # Fatores de ajuste calórico por objetivo
+    # Fatores de ajuste calórico por objetivo/nível de déficit
     FATORES_OBJETIVO = {
         'manutencao': 1.0,
-        'perda_leve': 0.85,        # ~15% déficit
-        'perda_moderada': 0.80,    # ~20% déficit (~500 kcal)
-        'perda_intensa': 0.70,     # ~30% déficit (~750 kcal)
-        'ganho_leve': 1.10,        # +10% superávit
-        'ganho_moderado': 1.15     # +15% superávit
+        'leve': 0.90,              # ~10% déficit (~250 kcal)
+        'moderado': 0.80,          # ~20% déficit (~500 kcal)
+        'intenso': 0.70,           # ~30% déficit (~750 kcal)
+        'muito_intenso': 0.60,     # ~40% déficit (~1000 kcal)
+        # Aliases para compatibilidade
+        'perda_leve': 0.90,
+        'perda_moderada': 0.80,
+        'perda_intensa': 0.70,
+        'ganho_leve': 1.10,
+        'ganho_moderado': 1.15
+    }
+
+    # Descrições dos níveis de déficit
+    DESCRICAO_DEFICIT = {
+        'leve': 'Déficit leve (~10%, perda gradual)',
+        'moderado': 'Déficit moderado (~20%, recomendado)',
+        'intenso': 'Déficit intenso (~30%, perda acelerada)',
+        'muito_intenso': 'Déficit muito intenso (~40%, supervisionado)'
     }
 
     # Distribuição de macros por tipo de dieta (percentuais)
@@ -285,3 +298,103 @@ class NutritionCalculator:
             Quantidade de água em litros
         """
         return (peso * 35) / 1000
+
+    @staticmethod
+    def calcular_relacao_cintura_altura(cintura: float, altura: float) -> float:
+        """
+        Calcula a relação cintura/altura (RCQ)
+
+        Args:
+            cintura: Circunferência abdominal em cm
+            altura: Altura em cm
+
+        Returns:
+            Relação cintura/altura
+        """
+        return cintura / altura
+
+    @staticmethod
+    def classificar_risco_cardiovascular(cintura: float, altura: float, sexo: str) -> dict:
+        """
+        Classifica o risco cardiovascular baseado na circunferência abdominal
+
+        Critérios:
+        - Relação cintura/altura < 0.5: Risco baixo
+        - Relação cintura/altura 0.5-0.6: Risco moderado
+        - Relação cintura/altura > 0.6: Risco elevado
+
+        Circunferência abdominal de risco:
+        - Homens: > 94 cm (risco aumentado), > 102 cm (risco muito aumentado)
+        - Mulheres: > 80 cm (risco aumentado), > 88 cm (risco muito aumentado)
+
+        Args:
+            cintura: Circunferência abdominal em cm
+            altura: Altura em cm
+            sexo: 'M' ou 'F'
+
+        Returns:
+            Dict com classificação de risco e relação cintura/altura
+        """
+        rca = cintura / altura
+
+        # Classificação por relação cintura/altura
+        if rca < 0.5:
+            risco_rca = "Baixo"
+        elif rca < 0.6:
+            risco_rca = "Moderado"
+        else:
+            risco_rca = "Elevado"
+
+        # Classificação por circunferência abdominal absoluta
+        if sexo.upper() == 'M':
+            if cintura <= 94:
+                risco_cintura = "Normal"
+            elif cintura <= 102:
+                risco_cintura = "Risco aumentado"
+            else:
+                risco_cintura = "Risco muito aumentado"
+        else:  # Feminino
+            if cintura <= 80:
+                risco_cintura = "Normal"
+            elif cintura <= 88:
+                risco_cintura = "Risco aumentado"
+            else:
+                risco_cintura = "Risco muito aumentado"
+
+        # Determinar risco geral (o maior entre os dois)
+        riscos_ordem = ["Baixo", "Normal", "Moderado", "Risco aumentado", "Elevado", "Risco muito aumentado"]
+        idx_rca = riscos_ordem.index(risco_rca) if risco_rca in riscos_ordem else 0
+        idx_cintura = riscos_ordem.index(risco_cintura) if risco_cintura in riscos_ordem else 0
+        risco_geral = riscos_ordem[max(idx_rca, idx_cintura)]
+
+        return {
+            'relacao_cintura_altura': round(rca, 2),
+            'risco_por_rca': risco_rca,
+            'risco_por_cintura': risco_cintura,
+            'risco_cardiovascular': risco_geral,
+            'cintura': cintura
+        }
+
+    @classmethod
+    def calcular_meta_por_nivel(cls, necessidade: float, nivel_deficit: str, sexo: str = None) -> float:
+        """
+        Calcula a meta calórica baseada no nível de déficit escolhido
+
+        Args:
+            necessidade: Necessidade calórica total
+            nivel_deficit: leve, moderado, intenso, muito_intenso
+            sexo: 'M' ou 'F' para definir mínimo calórico
+
+        Returns:
+            Meta calórica ajustada em kcal/dia
+        """
+        fator = cls.FATORES_OBJETIVO.get(nivel_deficit, 0.80)
+        meta = necessidade * fator
+
+        # Mínimos calóricos seguros
+        if sexo and sexo.upper() == 'M':
+            minimo = 1500
+        else:
+            minimo = 1200
+
+        return max(meta, minimo)

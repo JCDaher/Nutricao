@@ -84,17 +84,24 @@ async def gerar_dieta(patient: PatientData):
         # Calcular IMC
         imc = calc.calcular_imc(patient.peso, patient.altura)
 
-        # Determinar objetivo baseado em IMC
-        objetivo = calc.determinar_objetivo(imc, patient.hba1c, patient.glicemia)
+        # Calcular meta calórica usando o nível de déficit escolhido pelo usuário
+        meta = calc.calcular_meta_por_nivel(necessidade, patient.nivel_deficit, patient.sexo)
 
-        # Calcular meta calórica
-        meta = calc.calcular_meta(necessidade, objetivo)
-
-        # Distribuir macros (padrão personalizado para diabetes: 50/20/30)
-        macros = calc.distribuir_macros(meta, tipo_dieta='personalizado')
+        # Distribuir macros usando o tipo de dieta escolhido pelo usuário
+        macros = calc.distribuir_macros(meta, tipo_dieta=patient.tipo_dieta)
 
         # Distribuir por refeições (5 refeições com ceia)
         distribuicao = calc.distribuir_por_refeicoes(meta, num_refeicoes=5)
+
+        # Calcular risco cardiovascular se cintura foi informada
+        risco_cardiovascular = None
+        relacao_cintura_altura = None
+        if patient.cintura:
+            risco_cv = calc.classificar_risco_cardiovascular(
+                patient.cintura, patient.altura, patient.sexo
+            )
+            risco_cardiovascular = risco_cv['risco_cardiovascular']
+            relacao_cintura_altura = risco_cv['relacao_cintura_altura']
 
         # Criar objeto NutritionData
         nutrition_data = NutritionData(
@@ -103,7 +110,9 @@ async def gerar_dieta(patient: PatientData):
             meta_calorica=meta,
             imc=imc,
             macros=macros,
-            distribuicao_refeicoes=distribuicao
+            distribuicao_refeicoes=distribuicao,
+            risco_cardiovascular=risco_cardiovascular,
+            relacao_cintura_altura=relacao_cintura_altura
         )
 
         # ==================== 2. MONTAGEM DE REFEIÇÕES (Python - 0 tokens) ====================
@@ -155,7 +164,10 @@ async def gerar_dieta(patient: PatientData):
                 "meta_calorica": round(meta, 0),
                 "imc": round(imc, 1),
                 "classificacao_imc": calc.classificar_imc(imc),
-                "objetivo": objetivo,
+                "tipo_dieta": patient.tipo_dieta,
+                "nivel_deficit": patient.nivel_deficit,
+                "risco_cardiovascular": risco_cardiovascular,
+                "relacao_cintura_altura": relacao_cintura_altura,
                 "calorias_reais": round(resumo['calorias'], 0),
                 "macros": {
                     "carboidratos_g": round(resumo['carboidratos_g'], 0),
@@ -193,7 +205,9 @@ async def calcular_preview(
     peso: float,
     altura: float,
     idade: int,
-    sexo: str
+    sexo: str,
+    nivel_deficit: str = "moderado",
+    cintura: float = None
 ):
     """
     Endpoint para preview dos cálculos (sem gerar dieta completa)
@@ -205,6 +219,8 @@ async def calcular_preview(
         altura: Altura em cm
         idade: Idade em anos
         sexo: M ou F
+        nivel_deficit: Nível de déficit calórico (leve, moderado, intenso, muito_intenso)
+        cintura: Circunferência abdominal em cm (opcional)
 
     Returns:
         JSON com cálculos básicos
@@ -213,21 +229,28 @@ async def calcular_preview(
         tmb = calc.calcular_tmb(peso, altura, idade, sexo)
         imc = calc.calcular_imc(peso, altura)
         necessidade = calc.necessidade_calorica(tmb, 'leve')
-        objetivo = calc.determinar_objetivo(imc)
-        meta = calc.calcular_meta(necessidade, objetivo)
+        meta = calc.calcular_meta_por_nivel(necessidade, nivel_deficit, sexo)
         peso_ideal = calc.calcular_peso_ideal(altura, sexo)
         agua = calc.calcular_agua(peso)
 
-        return {
+        result = {
             "tmb": round(tmb, 0),
             "imc": round(imc, 1),
             "classificacao_imc": calc.classificar_imc(imc),
             "necessidade_calorica": round(necessidade, 0),
             "meta_calorica": round(meta, 0),
-            "objetivo": objetivo,
+            "nivel_deficit": nivel_deficit,
+            "deficit_descricao": calc.DESCRICAO_DEFICIT.get(nivel_deficit, ""),
             "peso_ideal": peso_ideal,
             "agua_litros": round(agua, 1)
         }
+
+        # Adicionar risco cardiovascular se cintura foi informada
+        if cintura:
+            risco_cv = calc.classificar_risco_cardiovascular(cintura, altura, sexo)
+            result["risco_cardiovascular"] = risco_cv
+
+        return result
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
