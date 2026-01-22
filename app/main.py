@@ -40,7 +40,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Inicializar serviços
 calc = NutritionCalculator()
-builder = MealBuilder()
+# MealBuilder será criado por requisição com o tipo_dieta específico
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -117,6 +117,8 @@ async def gerar_dieta(patient: PatientData):
 
         # ==================== 2. MONTAGEM DE REFEIÇÕES (Python - 0 tokens) ====================
 
+        # Criar MealBuilder com o tipo de dieta específico do paciente
+        builder = MealBuilder(tipo_dieta=patient.tipo_dieta)
         refeicoes = builder.build_complete_plan(distribuicao, macros)
 
         # ==================== 3. CRIAR PLANO COMPLETO ====================
