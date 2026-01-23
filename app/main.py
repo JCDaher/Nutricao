@@ -289,8 +289,8 @@ async def feegow_status():
 @app.get("/api/feegow/debug")
 async def feegow_debug(test_name: str = "maria"):
     """
-    Endpoint de debug para testar a API FEEGOW
-    Mostra resposta bruta e testa filtro local
+    Endpoint de debug para testar a API FEEGOW com paginação
+    Busca TODOS os pacientes e testa filtro local
     """
     import httpx
 
@@ -309,34 +309,58 @@ async def feegow_debug(test_name: str = "maria"):
         "test_name": test_name,
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    # Buscar TODOS os pacientes com paginação
+    all_patients = []
+    offset = 0
+    pages = 0
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
         try:
-            # Buscar SEM parâmetros
-            response = await client.get(
-                f"{base_url}/patient/list",
-                headers=headers
-            )
+            while True:
+                params = {"offset": offset} if offset > 0 else {}
 
-            results["status_code"] = response.status_code
+                response = await client.get(
+                    f"{base_url}/patient/list",
+                    headers=headers,
+                    params=params if params else None
+                )
 
-            if response.status_code == 200:
+                if response.status_code != 200:
+                    results["last_status_code"] = response.status_code
+                    break
+
                 data = response.json()
                 patients = data.get("content", data.get("data", []))
 
-                results["total_patients"] = len(patients)
-                results["response_keys"] = list(data.keys())
+                if not patients or len(patients) == 0:
+                    break
 
-                # Mostrar primeiros 3 pacientes como exemplo
-                results["sample_patients"] = patients[:3] if patients else []
+                all_patients.extend(patients)
+                pages += 1
 
-                # Filtrar pelo nome
-                if test_name and patients:
-                    test_lower = test_name.lower()
-                    filtered = [p for p in patients if p.get("nome") and test_lower in p.get("nome", "").lower()]
-                    results["filtered_count"] = len(filtered)
-                    results["filtered_sample"] = filtered[:3] if filtered else []
-            else:
-                results["error"] = response.text[:500]
+                # Se retornou menos que 500, não há mais páginas
+                if len(patients) < 500:
+                    break
+
+                offset += len(patients)
+
+                # Limite de segurança
+                if len(all_patients) >= 5000:
+                    results["warning"] = "Limite de 5000 pacientes atingido"
+                    break
+
+            results["total_patients"] = len(all_patients)
+            results["pages_fetched"] = pages
+
+            # Mostrar primeiros 3 pacientes como exemplo
+            results["sample_patients"] = [{"patient_id": p.get("patient_id"), "nome": p.get("nome")} for p in all_patients[:3]]
+
+            # Filtrar pelo nome
+            if test_name and all_patients:
+                test_lower = test_name.lower()
+                filtered = [p for p in all_patients if p.get("nome") and test_lower in p.get("nome", "").lower()]
+                results["filtered_count"] = len(filtered)
+                results["filtered_sample"] = [{"patient_id": p.get("patient_id"), "nome": p.get("nome")} for p in filtered[:5]]
 
         except Exception as e:
             results["exception"] = str(e)

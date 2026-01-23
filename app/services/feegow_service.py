@@ -37,7 +37,7 @@ class FeegowService:
         limit: int = 20
     ) -> Dict[str, Any]:
         """
-        Busca pacientes no FEEGOW
+        Busca pacientes no FEEGOW com paginação
 
         Args:
             nome: Nome do paciente (busca parcial)
@@ -52,31 +52,108 @@ class FeegowService:
             return {"success": False, "error": "FEEGOW não configurado"}
 
         try:
-            # API FEEGOW não suporta filtro por nome nem limit funcional
-            # Solicitar todos os pacientes e filtrar localmente
-            params = {}
-
-            # CPF funciona na API
+            # CPF funciona na API - busca direta
             if cpf:
-                params["cpf"] = cpf.replace(".", "").replace("-", "")
+                return await self._search_by_cpf(cpf, limit)
 
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                # Buscar pacientes
+            # Para busca por nome, precisamos buscar TODOS os pacientes com paginação
+            all_patients = []
+            offset = 0
+            batch_size = 500  # API retorna até 500 por vez
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                while True:
+                    params = {"offset": offset} if offset > 0 else {}
+
+                    response = await client.get(
+                        f"{self.base_url}/patient/list",
+                        headers=self.headers,
+                        params=params if params else None
+                    )
+
+                    if response.status_code != 200:
+                        break
+
+                    data = response.json()
+                    patients = data.get("content", data.get("data", []))
+
+                    if not patients or len(patients) == 0:
+                        break
+
+                    all_patients.extend(patients)
+
+                    # Se retornou menos que o batch, não há mais páginas
+                    if len(patients) < batch_size:
+                        break
+
+                    offset += len(patients)
+
+                    # Limite de segurança - máximo 5000 pacientes
+                    if len(all_patients) >= 5000:
+                        break
+
+            # Formatar dados dos pacientes
+            formatted_patients = []
+            for p in all_patients:
+                formatted_patients.append({
+                    "id": p.get("patient_id") or p.get("id") or p.get("paciente_id"),
+                    "prontuario": p.get("local_id") or p.get("prontuario"),
+                    "nome": p.get("nome") or p.get("nomePaciente"),
+                    "cpf": p.get("cpf") or p.get("cpfPaciente"),
+                    "data_nascimento": p.get("nascimento") or p.get("data_nascimento"),
+                    "sexo": self._parse_sexo(p.get("sexo") or p.get("sexo_id")),
+                    "telefone": p.get("celular") or p.get("telefone") or p.get("cel1") or p.get("tel1"),
+                    "email": p.get("email"),
+                    "peso": self._parse_float(p.get("peso")),
+                    "altura": self._parse_float(p.get("altura")),
+                })
+
+            # Filtrar localmente já que a API FEEGOW não suporta filtro por nome
+            if nome:
+                nome_lower = nome.lower()
+                formatted_patients = [
+                    p for p in formatted_patients
+                    if p.get("nome") and nome_lower in p["nome"].lower()
+                ]
+            if prontuario:
+                formatted_patients = [
+                    p for p in formatted_patients
+                    if p.get("prontuario") and prontuario in str(p["prontuario"])
+                ]
+
+            # Limitar resultados
+            formatted_patients = formatted_patients[:limit]
+
+            return {
+                "success": True,
+                "patients": formatted_patients,
+                "total": len(formatted_patients)
+            }
+
+        except httpx.TimeoutException:
+            return {"success": False, "error": "Timeout na conexão com FEEGOW"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    async def _search_by_cpf(self, cpf: str, limit: int) -> Dict[str, Any]:
+        """Busca paciente por CPF (suportado pela API)"""
+        try:
+            cpf_clean = cpf.replace(".", "").replace("-", "")
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(
                     f"{self.base_url}/patient/list",
                     headers=self.headers,
-                    params=params if params else None
+                    params={"cpf": cpf_clean}
                 )
 
                 if response.status_code == 200:
                     data = response.json()
                     patients = data.get("content", data.get("data", []))
 
-                    # Se for uma lista direta
                     if isinstance(patients, dict):
                         patients = [patients]
 
-                    # Formatar dados dos pacientes
                     formatted_patients = []
                     for p in patients:
                         formatted_patients.append({
@@ -92,42 +169,18 @@ class FeegowService:
                             "altura": self._parse_float(p.get("altura")),
                         })
 
-                    # Filtrar localmente já que a API FEEGOW não suporta filtro
-                    if nome:
-                        nome_lower = nome.lower()
-                        formatted_patients = [
-                            p for p in formatted_patients
-                            if p.get("nome") and nome_lower in p["nome"].lower()
-                        ]
-                    if cpf:
-                        cpf_clean = cpf.replace(".", "").replace("-", "")
-                        formatted_patients = [
-                            p for p in formatted_patients
-                            if p.get("cpf") and cpf_clean in p["cpf"].replace(".", "").replace("-", "")
-                        ]
-                    if prontuario:
-                        formatted_patients = [
-                            p for p in formatted_patients
-                            if p.get("prontuario") and prontuario in str(p["prontuario"])
-                        ]
-
-                    # Limitar resultados
-                    formatted_patients = formatted_patients[:limit]
-
                     return {
                         "success": True,
-                        "patients": formatted_patients,
+                        "patients": formatted_patients[:limit],
                         "total": len(formatted_patients)
                     }
                 else:
                     return {
                         "success": False,
-                        "error": f"Erro na API: {response.status_code}",
-                        "detail": response.text
+                        "error": f"Erro na API: {response.status_code}"
                     }
-
-        except httpx.TimeoutException:
-            return {"success": False, "error": "Timeout na conexão com FEEGOW"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
