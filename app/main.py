@@ -286,6 +286,55 @@ async def feegow_status():
     }
 
 
+@app.get("/api/feegow/debug")
+async def feegow_debug():
+    """
+    Endpoint de debug para testar a API FEEGOW
+    Testa vários endpoints possíveis para descobrir o correto
+    """
+    import httpx
+
+    if not feegow_service.is_configured:
+        return {"error": "FEEGOW não configurado"}
+
+    base_url = settings.feegow_api_url
+    headers = {
+        "x-access-token": settings.feegow_api_token,
+        "Content-Type": "application/json"
+    }
+
+    # Lista de endpoints para testar
+    endpoints_to_try = [
+        "/patient/list",
+        "/patient/search",
+        "/pacientes",
+        "/pacientes/lista",
+        "/patients",
+        "/patients/list",
+    ]
+
+    results = {
+        "base_url": base_url,
+        "endpoints_tested": {}
+    }
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        for endpoint in endpoints_to_try:
+            try:
+                url = f"{base_url}{endpoint}"
+                response = await client.get(url, headers=headers, params={"limit": 1})
+                results["endpoints_tested"][endpoint] = {
+                    "status_code": response.status_code,
+                    "response_preview": response.text[:500] if response.text else ""
+                }
+            except Exception as e:
+                results["endpoints_tested"][endpoint] = {
+                    "error": str(e)
+                }
+
+    return results
+
+
 @app.get("/api/feegow/patients/search")
 async def feegow_search_patients(
     nome: Optional[str] = Query(None, description="Nome do paciente (busca parcial)"),

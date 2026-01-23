@@ -57,35 +57,40 @@ class FeegowService:
             if nome:
                 params["nome"] = nome
             if cpf:
-                params["cpf"] = cpf
+                params["cpf"] = cpf.replace(".", "").replace("-", "")
             if prontuario:
-                params["prontuario"] = prontuario
+                params["local_id"] = prontuario
 
             async with httpx.AsyncClient(timeout=30.0) as client:
+                # Tentar endpoint /patient/list primeiro
                 response = await client.get(
-                    f"{self.base_url}/patient/search",
+                    f"{self.base_url}/patient/list",
                     headers=self.headers,
                     params=params
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    patients = data.get("content", [])
+                    patients = data.get("content", data.get("data", []))
+
+                    # Se for uma lista direta
+                    if isinstance(patients, dict):
+                        patients = [patients]
 
                     # Formatar dados dos pacientes
                     formatted_patients = []
                     for p in patients:
                         formatted_patients.append({
-                            "id": p.get("id"),
+                            "id": p.get("id") or p.get("paciente_id"),
                             "prontuario": p.get("local_id") or p.get("prontuario"),
-                            "nome": p.get("nome"),
-                            "cpf": p.get("cpf"),
-                            "data_nascimento": p.get("nascimento"),
-                            "sexo": "M" if p.get("sexo") == "Masculino" else "F",
-                            "telefone": p.get("celular") or p.get("telefone"),
+                            "nome": p.get("nome") or p.get("nomePaciente"),
+                            "cpf": p.get("cpf") or p.get("cpfPaciente"),
+                            "data_nascimento": p.get("nascimento") or p.get("data_nascimento"),
+                            "sexo": self._parse_sexo(p.get("sexo")),
+                            "telefone": p.get("celular") or p.get("telefone") or p.get("cel1") or p.get("tel1"),
                             "email": p.get("email"),
-                            "peso": p.get("peso"),
-                            "altura": p.get("altura"),
+                            "peso": self._parse_float(p.get("peso")),
+                            "altura": self._parse_float(p.get("altura")),
                         })
 
                     return {
@@ -104,6 +109,17 @@ class FeegowService:
             return {"success": False, "error": "Timeout na conexão com FEEGOW"}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def _parse_sexo(self, sexo) -> str:
+        """Converte sexo para M ou F"""
+        if not sexo:
+            return ""
+        sexo_str = str(sexo).lower()
+        if sexo_str in ["m", "masculino", "male"]:
+            return "M"
+        elif sexo_str in ["f", "feminino", "female"]:
+            return "F"
+        return sexo_str.upper()[:1] if sexo_str else ""
 
     async def get_patient(self, patient_id: int) -> Dict[str, Any]:
         """
