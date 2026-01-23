@@ -211,6 +211,25 @@
                                 </select>
                             </div>
                         </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label class="radio-label" style="background: #fef3c7; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #f59e0b;">
+                                <input type="checkbox" id="contagem_cho" name="contagem_cho">
+                                <span style="width: 18px; height: 18px; border: 2px solid #f59e0b; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; margin-right: 0.5rem; background: white;">
+                                    <svg class="check-icon hidden" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                </span>
+                                <span style="font-weight: 500; color: #92400e;">📊 Formato para Contagem de Carboidratos (insulinoterapia)</span>
+                            </label>
+                        </div>
+
+                        <div id="cho_options" class="form-group hidden" style="margin-top: 0.5rem; padding: 1rem; background: #fffbeb; border-radius: 0.5rem;">
+                            <label for="razao_insulina_cho" style="font-size: 0.875rem;">Razão Insulina/Carboidrato (opcional)</label>
+                            <p class="form-hint">Quantas unidades de insulina para cada 15g de carboidrato?</p>
+                            <div class="input-with-unit" style="max-width: 200px;">
+                                <input type="number" id="razao_insulina_cho" name="razao_insulina_cho" min="0.1" max="5" step="0.1" placeholder="Ex: 1.0">
+                                <span class="unit">UI/15g</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="preview" class="preview hidden">
@@ -291,6 +310,15 @@
         const btnText = submitBtn.querySelector('.btn-text');
         const btnLoading = submitBtn.querySelector('.btn-loading');
         const preview = document.getElementById('preview');
+        const contagemChoCheckbox = document.getElementById('contagem_cho');
+        const choOptions = document.getElementById('cho_options');
+        const checkIcon = contagemChoCheckbox.parentElement.querySelector('.check-icon');
+
+        // Toggle carb counting options
+        contagemChoCheckbox.addEventListener('change', function() {
+            choOptions.classList.toggle('hidden', !this.checked);
+            checkIcon.classList.toggle('hidden', !this.checked);
+        });
         const idadeInput = document.getElementById('idade');
         const pesoInput = document.getElementById('peso');
         const alturaInput = document.getElementById('altura');
@@ -388,6 +416,8 @@
             form.reset();
             preview.classList.add('hidden');
             riscoCvDiv.classList.add('hidden');
+            choOptions.classList.add('hidden');
+            checkIcon.classList.add('hidden');
             document.getElementById('nome').focus();
         }
 
@@ -405,7 +435,9 @@
                 glicemia: document.getElementById('glicemia').value ? parseFloat(document.getElementById('glicemia').value) : null,
                 cintura: document.getElementById('cintura').value ? parseFloat(document.getElementById('cintura').value) : null,
                 tipo_dieta: document.getElementById('tipo_dieta').value,
-                nivel_deficit: document.getElementById('nivel_deficit').value
+                nivel_deficit: document.getElementById('nivel_deficit').value,
+                contagem_cho: document.getElementById('contagem_cho').checked,
+                razao_insulina_cho: document.getElementById('razao_insulina_cho').value ? parseFloat(document.getElementById('razao_insulina_cho').value) : null
             };
 
             if (!formData.nome || formData.nome.length < 3) { showAlert('Nome deve ter pelo menos 3 caracteres'); return; }
@@ -436,6 +468,7 @@
                     };
                     const modeLabel = modeLabels[m.mode_used] || m.mode_used;
                     const costText = m.cost_usd > 0 ? `$${m.cost_usd.toFixed(3)}` : 'Gratuito';
+                    const choText = m.contagem_cho ? '<br><strong>📊 Contagem de CHO:</strong> Ativada' : '';
                     showAlert(`<strong>Dieta gerada com sucesso!</strong><br>
                         <small>
                         <strong>Modo:</strong> ${modeLabel}<br>
@@ -443,7 +476,7 @@
                         <strong>Complexidade:</strong> ${m.complexity_score}/10<br>
                         <strong>Tempo:</strong> ${m.generation_time_seconds}s<br>
                         <strong>IMC:</strong> ${m.imc} (${m.classificacao_imc})<br>
-                        <strong>Meta:</strong> ${m.meta_calorica} kcal/dia
+                        <strong>Meta:</strong> ${m.meta_calorica} kcal/dia${choText}
                         </small>`, false);
                 }
             } catch (error) {

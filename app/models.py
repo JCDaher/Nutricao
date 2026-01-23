@@ -18,6 +18,9 @@ class PatientData(BaseModel):
     cintura: Optional[float] = Field(None, ge=50, le=200, description="Circunferência abdominal em cm")
     tipo_dieta: str = Field("personalizado", description="Tipo de dieta: personalizado, low_carb, low_carb_moderado")
     nivel_deficit: str = Field("moderado", description="Nível de déficit: leve, moderado, intenso, muito_intenso")
+    # Contagem de carboidratos
+    contagem_cho: bool = Field(False, description="Ativar formato para contagem de carboidratos")
+    razao_insulina_cho: float = Field(None, description="Razão insulina/carboidrato (UI por 15g CHO)")
 
 
 class NutritionData(BaseModel):
