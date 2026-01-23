@@ -93,6 +93,28 @@ class FeegowService:
                             "altura": self._parse_float(p.get("altura")),
                         })
 
+                    # Filtrar localmente já que a API FEEGOW não suporta filtro
+                    if nome:
+                        nome_lower = nome.lower()
+                        formatted_patients = [
+                            p for p in formatted_patients
+                            if p.get("nome") and nome_lower in p["nome"].lower()
+                        ]
+                    if cpf:
+                        cpf_clean = cpf.replace(".", "").replace("-", "")
+                        formatted_patients = [
+                            p for p in formatted_patients
+                            if p.get("cpf") and cpf_clean in p["cpf"].replace(".", "").replace("-", "")
+                        ]
+                    if prontuario:
+                        formatted_patients = [
+                            p for p in formatted_patients
+                            if p.get("prontuario") and prontuario in str(p["prontuario"])
+                        ]
+
+                    # Limitar resultados
+                    formatted_patients = formatted_patients[:limit]
+
                     return {
                         "success": True,
                         "patients": formatted_patients,

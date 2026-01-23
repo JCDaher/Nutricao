@@ -20,7 +20,7 @@ class PatientData(BaseModel):
     nivel_deficit: str = Field("moderado", description="Nível de déficit: leve, moderado, intenso, muito_intenso")
     # Contagem de carboidratos
     contagem_cho: bool = Field(False, description="Ativar formato para contagem de carboidratos")
-    razao_insulina_cho: float = Field(None, description="Razão insulina/carboidrato (UI por 15g CHO)")
+    razao_insulina_cho: Optional[float] = Field(None, description="Razão insulina/carboidrato (UI por 15g CHO)")
 
 
 class NutritionData(BaseModel):
