@@ -52,14 +52,12 @@ class FeegowService:
             return {"success": False, "error": "FEEGOW não configurado"}
 
         try:
-            # Solicitar TODOS os pacientes da API (sem limit)
+            # Solicitar muitos pacientes da API (limit alto)
             # pois a API FEEGOW não suporta filtro server-side
             # O filtro será aplicado localmente depois
-            params = {}
+            params = {"limit": 1000}
 
-            # Não enviar parâmetros de filtro - API ignora
-            # if nome:
-            #     params["nome"] = nome
+            # Não enviar parâmetros de filtro por nome - API ignora
             if cpf:
                 params["cpf"] = cpf.replace(".", "").replace("-", "")
             if prontuario:
