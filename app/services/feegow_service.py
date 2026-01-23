@@ -88,8 +88,8 @@ class FeegowService:
 
                     offset += len(patients)
 
-                    # Limite de segurança - máximo 5000 pacientes
-                    if len(all_patients) >= 5000:
+                    # Limite de segurança - máximo 10000 pacientes
+                    if len(all_patients) >= 10000:
                         break
 
             # Formatar dados dos pacientes
@@ -179,8 +179,6 @@ class FeegowService:
                         "success": False,
                         "error": f"Erro na API: {response.status_code}"
                     }
-        except Exception as e:
-            return {"success": False, "error": str(e)}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
