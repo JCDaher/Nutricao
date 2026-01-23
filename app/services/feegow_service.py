@@ -268,6 +268,112 @@ class FeegowService:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    async def create_patient(
+        self,
+        nome: str,
+        sexo: str,
+        data_nascimento: str = None,
+        cpf: str = None,
+        telefone: str = None,
+        email: str = None,
+        peso: float = None,
+        altura: float = None
+    ) -> Dict[str, Any]:
+        """
+        Cria um novo paciente no FEEGOW
+
+        Args:
+            nome: Nome completo do paciente (obrigatório)
+            sexo: Sexo do paciente - M ou F (obrigatório)
+            data_nascimento: Data de nascimento no formato YYYY-MM-DD
+            cpf: CPF do paciente
+            telefone: Telefone do paciente
+            email: Email do paciente
+            peso: Peso em kg
+            altura: Altura em cm
+
+        Returns:
+            Dict com dados do paciente criado
+        """
+        if not self.is_configured:
+            return {"success": False, "error": "FEEGOW não configurado"}
+
+        if not nome or not sexo:
+            return {"success": False, "error": "Nome e sexo são obrigatórios"}
+
+        try:
+            # Montar payload conforme API FEEGOW
+            payload = {
+                "nome": nome,
+                "sexo": "Masculino" if sexo == "M" else "Feminino"
+            }
+
+            if data_nascimento:
+                payload["nascimento"] = data_nascimento
+            if cpf:
+                # Remover formatação do CPF
+                payload["cpf"] = cpf.replace(".", "").replace("-", "")
+            if telefone:
+                payload["celular"] = telefone
+            if email:
+                payload["email"] = email
+            if peso:
+                payload["peso"] = str(peso)
+            if altura:
+                # FEEGOW pode aceitar altura em metros ou cm
+                payload["altura"] = str(altura)
+
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/patient/new",
+                    headers=self.headers,
+                    json=payload
+                )
+
+                if response.status_code in [200, 201]:
+                    data = response.json()
+                    content = data.get("content", {})
+
+                    # Retornar dados do paciente criado
+                    return {
+                        "success": True,
+                        "message": "Paciente criado com sucesso",
+                        "patient": {
+                            "id": content.get("id"),
+                            "prontuario": content.get("local_id") or content.get("prontuario"),
+                            "nome": nome,
+                            "sexo": sexo,
+                            "data_nascimento": data_nascimento,
+                            "cpf": cpf,
+                            "telefone": telefone,
+                            "email": email,
+                            "peso": peso,
+                            "altura": altura
+                        }
+                    }
+                elif response.status_code == 409:
+                    return {
+                        "success": False,
+                        "error": "Paciente já existe no sistema (CPF duplicado)"
+                    }
+                else:
+                    error_detail = response.text
+                    try:
+                        error_json = response.json()
+                        error_detail = error_json.get("message", error_detail)
+                    except:
+                        pass
+                    return {
+                        "success": False,
+                        "error": f"Erro ao criar paciente: {response.status_code}",
+                        "detail": error_detail
+                    }
+
+        except httpx.TimeoutException:
+            return {"success": False, "error": "Timeout na conexão com FEEGOW"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
     def _parse_float(self, value) -> Optional[float]:
         """Converte valor para float de forma segura"""
         if value is None:

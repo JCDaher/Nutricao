@@ -381,5 +381,53 @@ async def feegow_upload_diet(
     return result
 
 
+@app.post("/api/feegow/patients/create")
+async def feegow_create_patient(
+    nome: str = Query(..., min_length=3, description="Nome completo do paciente"),
+    sexo: str = Query(..., regex="^[MF]$", description="Sexo: M ou F"),
+    data_nascimento: Optional[str] = Query(None, description="Data nascimento (YYYY-MM-DD)"),
+    cpf: Optional[str] = Query(None, description="CPF do paciente"),
+    telefone: Optional[str] = Query(None, description="Telefone do paciente"),
+    email: Optional[str] = Query(None, description="Email do paciente"),
+    peso: Optional[float] = Query(None, ge=30, le=300, description="Peso em kg"),
+    altura: Optional[float] = Query(None, ge=100, le=250, description="Altura em cm")
+):
+    """
+    Cria um novo paciente no FEEGOW
+
+    Args:
+        nome: Nome completo do paciente (obrigatório)
+        sexo: Sexo do paciente - M ou F (obrigatório)
+        data_nascimento: Data de nascimento (YYYY-MM-DD)
+        cpf: CPF do paciente
+        telefone: Telefone do paciente
+        email: Email do paciente
+        peso: Peso em kg
+        altura: Altura em cm
+
+    Returns:
+        JSON com dados do paciente criado
+    """
+    if not feegow_service.is_configured:
+        raise HTTPException(status_code=503, detail="FEEGOW não configurado")
+
+    result = await feegow_service.create_patient(
+        nome=nome,
+        sexo=sexo,
+        data_nascimento=data_nascimento,
+        cpf=cpf,
+        telefone=telefone,
+        email=email,
+        peso=peso,
+        altura=altura
+    )
+
+    if not result["success"]:
+        status_code = 409 if "já existe" in result.get("error", "") else 500
+        raise HTTPException(status_code=status_code, detail=result.get("error", "Erro ao criar paciente"))
+
+    return result
+
+
 # Handler para Vercel
 handler = app
