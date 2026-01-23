@@ -297,40 +297,51 @@ async def feegow_debug():
     if not feegow_service.is_configured:
         return {"error": "FEEGOW não configurado"}
 
-    base_url = settings.feegow_api_url
     headers = {
         "x-access-token": settings.feegow_api_token,
         "Content-Type": "application/json"
     }
 
-    # Lista de endpoints para testar
-    endpoints_to_try = [
+    # Lista de URLs base e endpoints para testar
+    base_urls = [
+        "https://api.feegow.com.br/v1/api",
+        "https://api.feegow.com.br/v1",
+        "https://api.feegow.com.br/api",
+        "https://api.feegow.com.br",
+        "https://api.feegow.com/v1/api",
+        "https://api.feegow.com/v1",
+    ]
+
+    endpoints = [
         "/patient/list",
         "/patient/search",
-        "/pacientes",
-        "/pacientes/lista",
-        "/patients",
-        "/patients/list",
+        "/patient",
+        "/paciente/lista",
+        "/paciente/buscar",
+        "/paciente",
     ]
 
     results = {
-        "base_url": base_url,
-        "endpoints_tested": {}
+        "current_base_url": settings.feegow_api_url,
+        "tests": {}
     }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        for endpoint in endpoints_to_try:
-            try:
-                url = f"{base_url}{endpoint}"
-                response = await client.get(url, headers=headers, params={"limit": 1})
-                results["endpoints_tested"][endpoint] = {
-                    "status_code": response.status_code,
-                    "response_preview": response.text[:500] if response.text else ""
-                }
-            except Exception as e:
-                results["endpoints_tested"][endpoint] = {
-                    "error": str(e)
-                }
+        for base_url in base_urls:
+            results["tests"][base_url] = {}
+            for endpoint in endpoints:
+                try:
+                    url = f"{base_url}{endpoint}"
+                    response = await client.get(url, headers=headers, params={"limit": 1})
+                    results["tests"][base_url][endpoint] = {
+                        "status": response.status_code,
+                        "preview": response.text[:200] if response.status_code == 200 else ""
+                    }
+                    # Se encontrar um que funciona, destaca
+                    if response.status_code == 200:
+                        results["working_endpoint"] = f"{base_url}{endpoint}"
+                except Exception as e:
+                    results["tests"][base_url][endpoint] = {"error": str(e)[:100]}
 
     return results
 
