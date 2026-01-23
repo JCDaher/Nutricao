@@ -14,6 +14,7 @@ from pathlib import Path
 from app.models import PatientData
 from app.services.nutrition_calc import NutritionCalculator
 from app.services.hybrid_system import HybridDietSystem
+from app.services.feegow_service import feegow_service
 from app.config.settings import settings, GenerationMode
 
 # Detectar ambiente Vercel
@@ -265,6 +266,167 @@ async def analyze_complexity(patient: PatientData):
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# =============================================================================
+# ENDPOINTS FEEGOW - Integração com prontuário eletrônico
+# =============================================================================
+
+@app.get("/api/feegow/status")
+async def feegow_status():
+    """
+    Verifica status da integração FEEGOW
+
+    Returns:
+        JSON com status da configuração
+    """
+    return {
+        "configured": feegow_service.is_configured,
+        "message": "FEEGOW configurado" if feegow_service.is_configured else "Token FEEGOW não configurado"
+    }
+
+
+@app.get("/api/feegow/patients/search")
+async def feegow_search_patients(
+    nome: Optional[str] = Query(None, description="Nome do paciente (busca parcial)"),
+    cpf: Optional[str] = Query(None, description="CPF do paciente"),
+    prontuario: Optional[str] = Query(None, description="Número do prontuário"),
+    limit: int = Query(20, ge=1, le=100, description="Limite de resultados")
+):
+    """
+    Busca pacientes no FEEGOW
+
+    Args:
+        nome: Nome do paciente (busca parcial)
+        cpf: CPF do paciente
+        prontuario: Número do prontuário
+        limit: Limite de resultados
+
+    Returns:
+        JSON com lista de pacientes encontrados
+    """
+    if not feegow_service.is_configured:
+        raise HTTPException(status_code=503, detail="FEEGOW não configurado")
+
+    if not nome and not cpf and not prontuario:
+        raise HTTPException(status_code=400, detail="Informe nome, CPF ou prontuário para busca")
+
+    result = await feegow_service.search_patients(
+        nome=nome, cpf=cpf, prontuario=prontuario, limit=limit
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result.get("error", "Erro na busca"))
+
+    return result
+
+
+@app.get("/api/feegow/patients/{patient_id}")
+async def feegow_get_patient(patient_id: int):
+    """
+    Busca dados completos de um paciente pelo ID
+
+    Args:
+        patient_id: ID do paciente no FEEGOW
+
+    Returns:
+        JSON com dados completos do paciente
+    """
+    if not feegow_service.is_configured:
+        raise HTTPException(status_code=503, detail="FEEGOW não configurado")
+
+    result = await feegow_service.get_patient(patient_id)
+
+    if not result["success"]:
+        raise HTTPException(status_code=404, detail=result.get("error", "Paciente não encontrado"))
+
+    return result
+
+
+@app.post("/api/feegow/upload-diet")
+async def feegow_upload_diet(
+    patient_id: int = Query(..., description="ID do paciente no FEEGOW"),
+    diet_content: str = Query(..., description="Conteúdo da dieta em Markdown"),
+    patient_name: str = Query(..., description="Nome do paciente para o arquivo")
+):
+    """
+    Faz upload da dieta gerada para o prontuário do paciente no FEEGOW
+
+    Args:
+        patient_id: ID do paciente no FEEGOW
+        diet_content: Conteúdo da dieta em Markdown
+        patient_name: Nome do paciente para compor o nome do arquivo
+
+    Returns:
+        JSON com resultado do upload
+    """
+    if not feegow_service.is_configured:
+        raise HTTPException(status_code=503, detail="FEEGOW não configurado")
+
+    # Gerar nome do arquivo
+    nome_limpo = patient_name.replace(" ", "_").replace(".", "")
+    data_atual = datetime.now().strftime('%Y-%m-%d')
+    filename = f"Dieta_{nome_limpo}_{data_atual}.md"
+
+    result = await feegow_service.upload_diet_to_record(
+        patient_id=patient_id,
+        diet_content=diet_content,
+        filename=filename,
+        description=f"Plano Alimentar Personalizado - {patient_name}"
+    )
+
+    if not result["success"]:
+        raise HTTPException(status_code=500, detail=result.get("error", "Erro no upload"))
+
+    return result
+
+
+@app.post("/api/feegow/patients/create")
+async def feegow_create_patient(
+    nome: str = Query(..., min_length=3, description="Nome completo do paciente"),
+    sexo: str = Query(..., regex="^[MF]$", description="Sexo: M ou F"),
+    data_nascimento: Optional[str] = Query(None, description="Data nascimento (YYYY-MM-DD)"),
+    cpf: Optional[str] = Query(None, description="CPF do paciente"),
+    telefone: Optional[str] = Query(None, description="Telefone do paciente"),
+    email: Optional[str] = Query(None, description="Email do paciente"),
+    peso: Optional[float] = Query(None, ge=30, le=300, description="Peso em kg"),
+    altura: Optional[float] = Query(None, ge=100, le=250, description="Altura em cm")
+):
+    """
+    Cria um novo paciente no FEEGOW
+
+    Args:
+        nome: Nome completo do paciente (obrigatório)
+        sexo: Sexo do paciente - M ou F (obrigatório)
+        data_nascimento: Data de nascimento (YYYY-MM-DD)
+        cpf: CPF do paciente
+        telefone: Telefone do paciente
+        email: Email do paciente
+        peso: Peso em kg
+        altura: Altura em cm
+
+    Returns:
+        JSON com dados do paciente criado
+    """
+    if not feegow_service.is_configured:
+        raise HTTPException(status_code=503, detail="FEEGOW não configurado")
+
+    result = await feegow_service.create_patient(
+        nome=nome,
+        sexo=sexo,
+        data_nascimento=data_nascimento,
+        cpf=cpf,
+        telefone=telefone,
+        email=email,
+        peso=peso,
+        altura=altura
+    )
+
+    if not result["success"]:
+        status_code = 409 if "já existe" in result.get("error", "") else 500
+        raise HTTPException(status_code=status_code, detail=result.get("error", "Erro ao criar paciente"))
+
+    return result
 
 
 # Handler para Vercel

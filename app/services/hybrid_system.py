@@ -10,6 +10,7 @@ from app.services.complexity_analyzer import ComplexityAnalyzer
 from app.services.nutrition_calc import NutritionCalculator
 from app.services.meal_builder import MealBuilder
 from app.services.markdown_formatter import MarkdownFormatter
+from app.services.carb_counting_formatter import CarbCountingFormatter
 from app.services.api_diet_generator import APIDietGenerator
 from app.utils.cost_tracker import CostTracker
 from app.config.settings import settings, GenerationMode
@@ -25,6 +26,7 @@ class HybridDietSystem:
         self.complexity_analyzer = ComplexityAnalyzer()
         self.nutrition_calc = NutritionCalculator()
         self.markdown_formatter = MarkdownFormatter()
+        self.carb_counting_formatter = CarbCountingFormatter()
 
         # API component
         try:
@@ -147,6 +149,8 @@ class HybridDietSystem:
             'classificacao_imc': self.nutrition_calc.classificar_imc(nutrition_data.imc),
             'tipo_dieta': patient_data.tipo_dieta,
             'nivel_deficit': patient_data.nivel_deficit,
+            'contagem_cho': patient_data.contagem_cho,
+            'razao_insulina_cho': patient_data.razao_insulina_cho,
             'risco_cardiovascular': nutrition_data.risco_cardiovascular,
             'relacao_cintura_altura': nutrition_data.relacao_cintura_altura,
             'calorias_reais': round(resumo['calorias'], 0),
@@ -203,9 +207,18 @@ class HybridDietSystem:
     ) -> Tuple[str, float, int]:
         """100% Python - $0"""
 
-        markdown = self.markdown_formatter.format_complete_diet(
-            patient=patient, nutrition=nutrition, meals=meals
-        )
+        # Usar formatador de contagem de CHO se habilitado
+        if patient.contagem_cho:
+            markdown = self.carb_counting_formatter.format_carb_counting_diet(
+                patient=patient,
+                nutrition=nutrition,
+                meals=meals,
+                razao_insulina_cho=patient.razao_insulina_cho
+            )
+        else:
+            markdown = self.markdown_formatter.format_complete_diet(
+                patient=patient, nutrition=nutrition, meals=meals
+            )
         return (markdown, 0.0, 0)
 
     def _generate_api_minimal(
@@ -214,6 +227,11 @@ class HybridDietSystem:
         """Python + API apenas para apresentação"""
 
         if not self.api_available:
+            return self._generate_python_only(patient, nutrition, meals)
+
+        # Se contagem de CHO está ativada, usar o formatador específico
+        # (API não é necessária para contagem de CHO - formato técnico)
+        if patient.contagem_cho:
             return self._generate_python_only(patient, nutrition, meals)
 
         try:
