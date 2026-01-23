@@ -81,12 +81,12 @@ class FeegowService:
                     formatted_patients = []
                     for p in patients:
                         formatted_patients.append({
-                            "id": p.get("id") or p.get("paciente_id"),
+                            "id": p.get("patient_id") or p.get("id") or p.get("paciente_id"),
                             "prontuario": p.get("local_id") or p.get("prontuario"),
                             "nome": p.get("nome") or p.get("nomePaciente"),
                             "cpf": p.get("cpf") or p.get("cpfPaciente"),
                             "data_nascimento": p.get("nascimento") or p.get("data_nascimento"),
-                            "sexo": self._parse_sexo(p.get("sexo")),
+                            "sexo": self._parse_sexo(p.get("sexo") or p.get("sexo_id")),
                             "telefone": p.get("celular") or p.get("telefone") or p.get("cel1") or p.get("tel1"),
                             "email": p.get("email"),
                             "peso": self._parse_float(p.get("peso")),
