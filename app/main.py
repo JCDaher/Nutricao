@@ -290,7 +290,7 @@ async def feegow_status():
 async def feegow_debug(test_name: str = "maria"):
     """
     Endpoint de debug para testar a API FEEGOW
-    Testa vários endpoints e parâmetros possíveis
+    Mostra resposta bruta e testa filtro local
     """
     import httpx
 
@@ -302,48 +302,44 @@ async def feegow_debug(test_name: str = "maria"):
         "Content-Type": "application/json"
     }
 
-    base_url = "https://api.feegow.com.br/api"
-
-    # Testar diferentes parâmetros de busca
-    search_params = [
-        {"nome": test_name},
-        {"name": test_name},
-        {"search": test_name},
-        {"q": test_name},
-        {"query": test_name},
-        {"filtro": test_name},
-        {"paciente_nome": test_name},
-    ]
+    base_url = settings.feegow_api_url
 
     results = {
         "base_url": base_url,
         "test_name": test_name,
-        "param_tests": {}
     }
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        for params in search_params:
-            param_name = list(params.keys())[0]
-            try:
-                response = await client.get(
-                    f"{base_url}/patient/list",
-                    headers=headers,
-                    params=params
-                )
-                data = response.json() if response.status_code == 200 else {}
-                patients = data.get("content", [])
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            # Buscar SEM parâmetros
+            response = await client.get(
+                f"{base_url}/patient/list",
+                headers=headers
+            )
 
-                # Verificar se filtrou corretamente
-                filtered = [p for p in patients if test_name.lower() in p.get("nome", "").lower()]
+            results["status_code"] = response.status_code
 
-                results["param_tests"][param_name] = {
-                    "status": response.status_code,
-                    "total_returned": len(patients),
-                    "matching_filter": len(filtered),
-                    "works": len(patients) > 0 and len(patients) == len(filtered)
-                }
-            except Exception as e:
-                results["param_tests"][param_name] = {"error": str(e)[:100]}
+            if response.status_code == 200:
+                data = response.json()
+                patients = data.get("content", data.get("data", []))
+
+                results["total_patients"] = len(patients)
+                results["response_keys"] = list(data.keys())
+
+                # Mostrar primeiros 3 pacientes como exemplo
+                results["sample_patients"] = patients[:3] if patients else []
+
+                # Filtrar pelo nome
+                if test_name and patients:
+                    test_lower = test_name.lower()
+                    filtered = [p for p in patients if p.get("nome") and test_lower in p.get("nome", "").lower()]
+                    results["filtered_count"] = len(filtered)
+                    results["filtered_sample"] = filtered[:3] if filtered else []
+            else:
+                results["error"] = response.text[:500]
+
+        except Exception as e:
+            results["exception"] = str(e)
 
     return results
 
