@@ -287,10 +287,10 @@ async def feegow_status():
 
 
 @app.get("/api/feegow/debug")
-async def feegow_debug():
+async def feegow_debug(test_name: str = "maria"):
     """
     Endpoint de debug para testar a API FEEGOW
-    Testa vários endpoints possíveis para descobrir o correto
+    Testa vários endpoints e parâmetros possíveis
     """
     import httpx
 
@@ -302,46 +302,48 @@ async def feegow_debug():
         "Content-Type": "application/json"
     }
 
-    # Lista de URLs base e endpoints para testar
-    base_urls = [
-        "https://api.feegow.com.br/v1/api",
-        "https://api.feegow.com.br/v1",
-        "https://api.feegow.com.br/api",
-        "https://api.feegow.com.br",
-        "https://api.feegow.com/v1/api",
-        "https://api.feegow.com/v1",
-    ]
+    base_url = "https://api.feegow.com.br/api"
 
-    endpoints = [
-        "/patient/list",
-        "/patient/search",
-        "/patient",
-        "/paciente/lista",
-        "/paciente/buscar",
-        "/paciente",
+    # Testar diferentes parâmetros de busca
+    search_params = [
+        {"nome": test_name},
+        {"name": test_name},
+        {"search": test_name},
+        {"q": test_name},
+        {"query": test_name},
+        {"filtro": test_name},
+        {"paciente_nome": test_name},
     ]
 
     results = {
-        "current_base_url": settings.feegow_api_url,
-        "tests": {}
+        "base_url": base_url,
+        "test_name": test_name,
+        "param_tests": {}
     }
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        for base_url in base_urls:
-            results["tests"][base_url] = {}
-            for endpoint in endpoints:
-                try:
-                    url = f"{base_url}{endpoint}"
-                    response = await client.get(url, headers=headers, params={"limit": 1})
-                    results["tests"][base_url][endpoint] = {
-                        "status": response.status_code,
-                        "preview": response.text[:200] if response.status_code == 200 else ""
-                    }
-                    # Se encontrar um que funciona, destaca
-                    if response.status_code == 200:
-                        results["working_endpoint"] = f"{base_url}{endpoint}"
-                except Exception as e:
-                    results["tests"][base_url][endpoint] = {"error": str(e)[:100]}
+        for params in search_params:
+            param_name = list(params.keys())[0]
+            try:
+                response = await client.get(
+                    f"{base_url}/patient/list",
+                    headers=headers,
+                    params=params
+                )
+                data = response.json() if response.status_code == 200 else {}
+                patients = data.get("content", [])
+
+                # Verificar se filtrou corretamente
+                filtered = [p for p in patients if test_name.lower() in p.get("nome", "").lower()]
+
+                results["param_tests"][param_name] = {
+                    "status": response.status_code,
+                    "total_returned": len(patients),
+                    "matching_filter": len(filtered),
+                    "works": len(patients) > 0 and len(patients) == len(filtered)
+                }
+            except Exception as e:
+                results["param_tests"][param_name] = {"error": str(e)[:100]}
 
     return results
 
