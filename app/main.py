@@ -345,8 +345,8 @@ async def feegow_debug(test_name: str = "maria"):
                 offset += len(patients)
 
                 # Limite de segurança
-                if len(all_patients) >= 5000:
-                    results["warning"] = "Limite de 5000 pacientes atingido"
+                if len(all_patients) >= 10000:
+                    results["warning"] = "Limite de 10000 pacientes atingido"
                     break
 
             results["total_patients"] = len(all_patients)
