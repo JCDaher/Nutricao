@@ -36,7 +36,7 @@ class Settings(BaseModel):
 
     # Configuração API FEEGOW
     feegow_api_token: str = os.getenv("FEEGOW_API_TOKEN", "")
-    feegow_api_url: str = os.getenv("FEEGOW_API_URL", "https://api.feegow.com.br/v1/api")
+    feegow_api_url: str = os.getenv("FEEGOW_API_URL", "https://api.feegow.com.br/api")
 
     # Limites de tokens
     max_tokens_minimal: int = 800       # Para apresentação apenas
