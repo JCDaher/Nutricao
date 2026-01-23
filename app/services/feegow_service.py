@@ -52,23 +52,20 @@ class FeegowService:
             return {"success": False, "error": "FEEGOW não configurado"}
 
         try:
-            # Solicitar muitos pacientes da API (limit alto)
-            # pois a API FEEGOW não suporta filtro server-side
-            # O filtro será aplicado localmente depois
-            params = {"limit": 1000}
+            # API FEEGOW não suporta filtro por nome nem limit funcional
+            # Solicitar todos os pacientes e filtrar localmente
+            params = {}
 
-            # Não enviar parâmetros de filtro por nome - API ignora
+            # CPF funciona na API
             if cpf:
                 params["cpf"] = cpf.replace(".", "").replace("-", "")
-            if prontuario:
-                params["local_id"] = prontuario
 
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                # Tentar endpoint /patient/list primeiro
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                # Buscar pacientes
                 response = await client.get(
                     f"{self.base_url}/patient/list",
                     headers=self.headers,
-                    params=params
+                    params=params if params else None
                 )
 
                 if response.status_code == 200:
