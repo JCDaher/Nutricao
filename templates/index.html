@@ -83,7 +83,30 @@
         .footer { text-align: center; padding: 2rem 0; margin-top: auto; }
         .footer p { font-size: 0.75rem; color: var(--gray-400); margin-bottom: 0.25rem; }
         .hidden { display: none !important; }
-        @media (max-width: 640px) { .container { padding: 0.5rem; } .card { padding: 1.5rem; } .logo { flex-direction: column; text-align: center; } .form-row { grid-template-columns: 1fr; } .radio-group { flex-direction: column; gap: 0.5rem; } .btn-group { flex-direction: column; } }
+        /* FEEGOW Integration Styles */
+        .feegow-section { background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); border: 1px solid #7dd3fc; border-radius: 0.75rem; padding: 1.25rem; margin-bottom: 1.5rem; }
+        .feegow-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+        .feegow-header svg { color: #0284c7; }
+        .feegow-header h3 { font-size: 0.875rem; font-weight: 600; color: #0369a1; margin: 0; }
+        .feegow-header .badge { font-size: 0.625rem; background: #0284c7; color: white; padding: 0.125rem 0.5rem; border-radius: 9999px; margin-left: auto; }
+        .feegow-search { display: flex; gap: 0.5rem; }
+        .feegow-search input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #7dd3fc; border-radius: 0.375rem; font-size: 0.875rem; }
+        .feegow-search button { padding: 0.5rem 1rem; background: #0284c7; color: white; border: none; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; white-space: nowrap; }
+        .feegow-search button:hover { background: #0369a1; }
+        .feegow-search button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .feegow-results { margin-top: 1rem; max-height: 200px; overflow-y: auto; }
+        .feegow-patient { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: white; border: 1px solid #e0e7ff; border-radius: 0.5rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.15s; }
+        .feegow-patient:hover { background: #f0f9ff; border-color: #7dd3fc; }
+        .feegow-patient-info { font-size: 0.875rem; }
+        .feegow-patient-name { font-weight: 600; color: var(--gray-800); }
+        .feegow-patient-details { font-size: 0.75rem; color: var(--gray-500); margin-top: 0.125rem; }
+        .feegow-patient-select { font-size: 0.75rem; color: #0284c7; font-weight: 500; }
+        .feegow-upload { background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; }
+        .feegow-upload button { background: #059669; }
+        .feegow-upload button:hover { background: #047857; }
+        .feegow-disabled { opacity: 0.6; pointer-events: none; }
+        .feegow-status { font-size: 0.75rem; color: #6b7280; text-align: center; padding: 0.5rem; }
+        @media (max-width: 640px) { .container { padding: 0.5rem; } .card { padding: 1.5rem; } .logo { flex-direction: column; text-align: center; } .form-row { grid-template-columns: 1fr; } .radio-group { flex-direction: column; gap: 0.5rem; } .btn-group { flex-direction: column; } .feegow-search { flex-direction: column; } }
     </style>
 </head>
 <body>
@@ -111,7 +134,27 @@
                     <p>Preencha as informações abaixo para gerar um plano alimentar personalizado</p>
                 </div>
 
+                <!-- FEEGOW Integration -->
+                <div id="feegowSection" class="feegow-section hidden">
+                    <div class="feegow-header">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <h3>Buscar Paciente no FEEGOW</h3>
+                        <span class="badge">INTEGRADO</span>
+                    </div>
+                    <div class="feegow-search">
+                        <input type="text" id="feegowSearch" placeholder="Digite nome, CPF ou prontuário...">
+                        <button type="button" id="feegowSearchBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                            Buscar
+                        </button>
+                    </div>
+                    <div id="feegowResults" class="feegow-results hidden"></div>
+                    <div id="feegowStatus" class="feegow-status"></div>
+                </div>
+
                 <form id="dietForm" class="form">
+                    <!-- Hidden field for FEEGOW patient ID -->
+                    <input type="hidden" id="feegow_patient_id" name="feegow_patient_id" value="">
                     <div class="form-group">
                         <label for="nome">Nome Completo *</label>
                         <input type="text" id="nome" name="nome" required minlength="3" placeholder="Digite o nome completo do paciente">
@@ -487,7 +530,331 @@
         }
 
         form.addEventListener('submit', handleSubmit);
-        document.addEventListener('DOMContentLoaded', () => { document.getElementById('nome').focus(); });
+
+        // ============================================================
+        // FEEGOW Integration
+        // ============================================================
+        const feegowSection = document.getElementById('feegowSection');
+        const feegowSearchInput = document.getElementById('feegowSearch');
+        const feegowSearchBtn = document.getElementById('feegowSearchBtn');
+        const feegowResults = document.getElementById('feegowResults');
+        const feegowStatus = document.getElementById('feegowStatus');
+        const feegowPatientIdInput = document.getElementById('feegow_patient_id');
+
+        let feegowConfigured = false;
+        let lastGeneratedDiet = null;
+
+        // Check FEEGOW status on page load
+        async function checkFeegowStatus() {
+            try {
+                const response = await fetch('/api/feegow/status');
+                const data = await response.json();
+                feegowConfigured = data.configured;
+                if (feegowConfigured) {
+                    feegowSection.classList.remove('hidden');
+                    feegowStatus.textContent = '';
+                } else {
+                    feegowSection.classList.add('hidden');
+                }
+            } catch (error) {
+                feegowSection.classList.add('hidden');
+            }
+        }
+
+        // Search patients in FEEGOW
+        async function searchFeegowPatients() {
+            const query = feegowSearchInput.value.trim();
+            if (!query || query.length < 2) {
+                feegowStatus.textContent = 'Digite pelo menos 2 caracteres para buscar';
+                feegowResults.classList.add('hidden');
+                return;
+            }
+
+            feegowSearchBtn.disabled = true;
+            feegowSearchBtn.innerHTML = '<svg class="spinner" viewBox="0 0 24 24" width="14" height="14" style="display:inline;vertical-align:middle"><circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3"></circle></svg> Buscando...';
+            feegowStatus.textContent = '';
+            feegowResults.classList.add('hidden');
+
+            try {
+                // Determine search type
+                let url = '/api/feegow/patients/search?';
+                const cleanQuery = query.replace(/[.-]/g, '');
+                if (/^\d+$/.test(cleanQuery) && cleanQuery.length === 11) {
+                    url += `cpf=${query}`;
+                } else if (/^\d+$/.test(cleanQuery)) {
+                    url += `prontuario=${query}`;
+                } else {
+                    url += `nome=${encodeURIComponent(query)}`;
+                }
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Erro na busca');
+                }
+
+                const data = await response.json();
+                if (data.patients && data.patients.length > 0) {
+                    renderFeegowPatients(data.patients);
+                } else {
+                    feegowStatus.textContent = 'Nenhum paciente encontrado';
+                    feegowResults.classList.add('hidden');
+                }
+            } catch (error) {
+                feegowStatus.textContent = `Erro: ${error.message}`;
+                feegowResults.classList.add('hidden');
+            } finally {
+                feegowSearchBtn.disabled = false;
+                feegowSearchBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg> Buscar';
+            }
+        }
+
+        // Render patient search results
+        function renderFeegowPatients(patients) {
+            feegowResults.innerHTML = patients.map(p => `
+                <div class="feegow-patient" data-id="${p.id}" data-patient='${JSON.stringify(p).replace(/'/g, "&#39;")}'>
+                    <div class="feegow-patient-info">
+                        <div class="feegow-patient-name">${p.nome}</div>
+                        <div class="feegow-patient-details">
+                            ${p.prontuario ? `Prontuário: ${p.prontuario} | ` : ''}
+                            ${p.data_nascimento ? `Nasc: ${formatDate(p.data_nascimento)}` : ''}
+                            ${p.sexo ? ` | ${p.sexo === 'M' ? 'Masculino' : 'Feminino'}` : ''}
+                        </div>
+                    </div>
+                    <span class="feegow-patient-select">Selecionar →</span>
+                </div>
+            `).join('');
+            feegowResults.classList.remove('hidden');
+
+            // Add click handlers
+            feegowResults.querySelectorAll('.feegow-patient').forEach(el => {
+                el.addEventListener('click', () => selectFeegowPatient(JSON.parse(el.dataset.patient.replace(/&#39;/g, "'"))));
+            });
+        }
+
+        // Format date from YYYY-MM-DD to DD/MM/YYYY
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            }
+            return dateStr;
+        }
+
+        // Calculate age from birth date
+        function calculateAge(birthDateStr) {
+            if (!birthDateStr) return null;
+            const birthDate = new Date(birthDateStr);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        // Select and auto-fill patient data
+        function selectFeegowPatient(patient) {
+            // Store FEEGOW patient ID
+            feegowPatientIdInput.value = patient.id;
+
+            // Auto-fill form fields
+            if (patient.nome) document.getElementById('nome').value = patient.nome;
+            if (patient.sexo) {
+                const sexoRadio = document.querySelector(`input[name="sexo"][value="${patient.sexo}"]`);
+                if (sexoRadio) sexoRadio.checked = true;
+            }
+
+            // Calculate and fill age
+            if (patient.data_nascimento) {
+                const age = calculateAge(patient.data_nascimento);
+                if (age && age >= 18 && age <= 100) {
+                    document.getElementById('idade').value = age;
+                }
+            }
+
+            // Fill weight and height if available
+            if (patient.peso && patient.peso >= 40 && patient.peso <= 300) {
+                document.getElementById('peso').value = patient.peso;
+            }
+            if (patient.altura) {
+                // FEEGOW might return height in meters or cm
+                let altura = patient.altura;
+                if (altura < 3) altura = altura * 100; // Convert m to cm
+                if (altura >= 140 && altura <= 220) {
+                    document.getElementById('altura').value = Math.round(altura);
+                }
+            }
+
+            // Hide results and show success
+            feegowResults.classList.add('hidden');
+            feegowSearchInput.value = '';
+            feegowStatus.innerHTML = `<span style="color:#059669">✓ Paciente <strong>${patient.nome}</strong> selecionado</span>`;
+
+            // Trigger preview update
+            updatePreview();
+        }
+
+        // Upload diet to FEEGOW
+        async function uploadDietToFeegow() {
+            if (!lastGeneratedDiet || !feegowPatientIdInput.value) {
+                showAlert('Selecione um paciente do FEEGOW e gere a dieta primeiro');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('feegowUploadBtn');
+            if (uploadBtn) {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<svg class="spinner" viewBox="0 0 24 24" width="14" height="14" style="display:inline;vertical-align:middle"><circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="3"></circle></svg> Enviando...';
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    patient_id: feegowPatientIdInput.value,
+                    diet_content: lastGeneratedDiet.markdown,
+                    patient_name: lastGeneratedDiet.patientName
+                });
+
+                const response = await fetch(`/api/feegow/upload-diet?${params}`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Erro no upload');
+                }
+
+                showAlert('<strong>Dieta enviada para o FEEGOW!</strong><br>O plano alimentar foi adicionado ao prontuário do paciente.', false);
+
+                // Remove upload button after success
+                const uploadDiv = document.querySelector('.feegow-upload');
+                if (uploadDiv) uploadDiv.remove();
+
+            } catch (error) {
+                showAlert(`Erro ao enviar para FEEGOW: ${error.message}`);
+                if (uploadBtn) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Enviar para FEEGOW';
+                }
+            }
+        }
+
+        // Show FEEGOW upload option after diet generation
+        function showFeegowUploadOption() {
+            // Remove any existing upload div
+            const existingUpload = document.querySelector('.feegow-upload');
+            if (existingUpload) existingUpload.remove();
+
+            if (feegowConfigured && feegowPatientIdInput.value && lastGeneratedDiet) {
+                const uploadDiv = document.createElement('div');
+                uploadDiv.className = 'feegow-upload';
+                uploadDiv.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:0.75rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <div style="flex:1">
+                            <div style="font-weight:600;color:#065f46;font-size:0.875rem;">Enviar para prontuário FEEGOW?</div>
+                            <div style="font-size:0.75rem;color:#047857;">A dieta será anexada ao prontuário do paciente</div>
+                        </div>
+                        <button type="button" id="feegowUploadBtn" class="btn" style="padding:0.5rem 1rem;font-size:0.875rem;background:#059669;color:white;border:none;border-radius:0.375rem;cursor:pointer;" onclick="uploadDietToFeegow()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Enviar para FEEGOW
+                        </button>
+                    </div>
+                `;
+                feegowSection.appendChild(uploadDiv);
+            }
+        }
+
+        // Event listeners for FEEGOW
+        feegowSearchBtn.addEventListener('click', searchFeegowPatients);
+        feegowSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchFeegowPatients();
+            }
+        });
+
+        // Modify handleSubmit to store diet for FEEGOW upload
+        const originalHandleSubmit = handleSubmit;
+        handleSubmit = async function(event) {
+            event.preventDefault();
+            const formData = {
+                nome: document.getElementById('nome').value.trim(),
+                sexo: document.querySelector('input[name="sexo"]:checked')?.value || '',
+                idade: parseInt(document.getElementById('idade').value) || 0,
+                peso: parseFloat(document.getElementById('peso').value) || 0,
+                altura: parseFloat(document.getElementById('altura').value) || 0,
+                hba1c: document.getElementById('hba1c').value ? parseFloat(document.getElementById('hba1c').value) : null,
+                glicemia: document.getElementById('glicemia').value ? parseFloat(document.getElementById('glicemia').value) : null,
+                cintura: document.getElementById('cintura').value ? parseFloat(document.getElementById('cintura').value) : null,
+                tipo_dieta: document.getElementById('tipo_dieta').value,
+                nivel_deficit: document.getElementById('nivel_deficit').value,
+                contagem_cho: document.getElementById('contagem_cho').checked,
+                razao_insulina_cho: document.getElementById('razao_insulina_cho').value ? parseFloat(document.getElementById('razao_insulina_cho').value) : null
+            };
+
+            if (!formData.nome || formData.nome.length < 3) { showAlert('Nome deve ter pelo menos 3 caracteres'); return; }
+            if (!formData.sexo) { showAlert('Selecione o sexo'); return; }
+            if (formData.idade < 18 || formData.idade > 100) { showAlert('Idade deve estar entre 18 e 100 anos'); return; }
+            if (formData.peso < 40 || formData.peso > 300) { showAlert('Peso deve estar entre 40 e 300 kg'); return; }
+            if (formData.altura < 140 || formData.altura > 220) { showAlert('Altura deve estar entre 140 e 220 cm'); return; }
+
+            setLoadingState(true);
+            try {
+                const response = await fetch('/gerar-dieta', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Erro ao gerar dieta');
+                }
+                const data = await response.json();
+                if (data.success) {
+                    // Store for FEEGOW upload
+                    lastGeneratedDiet = {
+                        markdown: data.markdown,
+                        filename: data.filename,
+                        patientName: formData.nome
+                    };
+
+                    downloadMarkdown(data.markdown, data.filename);
+                    const m = data.metadata;
+                    const modeLabels = {
+                        'python_only': '🐍 Python (Gratuito)',
+                        'api_minimal': '🤖 API Minimal',
+                        'api_full': '🤖 API Completa'
+                    };
+                    const modeLabel = modeLabels[m.mode_used] || m.mode_used;
+                    const costText = m.cost_usd > 0 ? `$${m.cost_usd.toFixed(3)}` : 'Gratuito';
+                    const choText = m.contagem_cho ? '<br><strong>📊 Contagem de CHO:</strong> Ativada' : '';
+                    showAlert(`<strong>Dieta gerada com sucesso!</strong><br>
+                        <small>
+                        <strong>Modo:</strong> ${modeLabel}<br>
+                        <strong>Custo:</strong> ${costText}<br>
+                        <strong>Complexidade:</strong> ${m.complexity_score}/10<br>
+                        <strong>Tempo:</strong> ${m.generation_time_seconds}s<br>
+                        <strong>IMC:</strong> ${m.imc} (${m.classificacao_imc})<br>
+                        <strong>Meta:</strong> ${m.meta_calorica} kcal/dia${choText}
+                        </small>`, false);
+
+                    // Show FEEGOW upload option
+                    showFeegowUploadOption();
+                }
+            } catch (error) {
+                showAlert(`Erro ao gerar dieta: ${error.message}`);
+            } finally {
+                setLoadingState(false);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('nome').focus();
+            checkFeegowStatus();
+        });
     </script>
 </body>
 </html>

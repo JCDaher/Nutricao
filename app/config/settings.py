@@ -34,6 +34,10 @@ class Settings(BaseModel):
     anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
     anthropic_model: str = "claude-sonnet-4-5-20250929"
 
+    # Configuração API FEEGOW
+    feegow_api_token: str = os.getenv("FEEGOW_API_TOKEN", "")
+    feegow_api_url: str = "https://api.feegow.com.br/v1/api"
+
     # Limites de tokens
     max_tokens_minimal: int = 800       # Para apresentação apenas
     max_tokens_full: int = 8000         # Para dieta completa
